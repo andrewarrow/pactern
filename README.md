@@ -1,361 +1,171 @@
 # Pactern
 
-Pactern is an experimental language and toolchain for software built under
-human-owned contracts. The repository now has a Rust workspace and installable
-CLI skeleton; parsing, compilation, execution, and verification are future work.
+> Agents write. You set the terms.
 
-```sh
-cargo build --workspace --locked
-cargo run -p pactern-cli -- version --json
-cargo install --path crates/pactern-cli --locked
-```
+Pactern is a programming language and toolchain being built for developers who
+want to delegate implementation while retaining control of what their software
+must do, what it may access, and what evidence is required to accept a change.
 
-See the [development guide](docs/development.md),
-[CLI reference](docs/cli/0.1.0/README.md),
-[language specification](docs/spec/0.1.0/README.md), and
-[implementation milestones](MILESTONES.md). The original exploration follows.
+An agent can fix a failing test by correcting the implementation. It can also
+change the expected result, remove a check, or relax a requirement. After that
+edit, a green test suite may describe a different agreement from the one you
+started with. Reviewing the code means reviewing the rules again, too.
 
-## Original exploration
+Pactern's answer is to make that agreement a first-class part of the toolchain.
+You define the behavior and permissions. The agent proposes an implementation.
+The compiler, acceptance tools, and runtime are designed to check that the change
+respects the agreement—and return useful evidence when it doesn't.
 
-Yes. I think there's a genuine opportunity for a new programming language in 2026 designed around AI coding agents. But the breakthrough wouldn't be combining Rust, C, C++, and Go into a nicer syntax.
+**Early development:** the specification, Rust library, and installable CLI
+skeleton are available. Compilation, verification, execution, and semantic edits
+remain to be implemented. The examples and workflow below describe the design.
 
-It would be designing a language around a fundamentally different assumption:
+## A bug fix should preserve the requirement
 
-The primary author of the code is an AI agent. The human is the architect, reviewer, and owner of the software.
+Suppose your service reserves capacity from a customer's quota. Valid requests
+must succeed, invalid requests must return the right error, and the remaining
+quota must never become negative.
 
-That changes what a programming language should optimize for.
+The implementation lives in `src/quota.ptn`:
 
-Traditionally, languages compete on readability, expressiveness, performance, safety, and developer productivity. An agent-first language should also optimize for:
+```text
+module quota;
 
-- How reliably an AI can generate correct code.
-- How quickly an AI can compile, test, and repair its mistakes.
-- How easily an AI can understand and modify a million-line project.
-- How much of the program's behavior can be mechanically verified.
-- How safely generated code can execute without human supervision.
+pub enum ReserveError {
+    InvalidAmount,
+    InsufficientQuota,
+}
 
-## 1. This is already becoming a real category
-
-I found some particularly relevant projects.
-
-[如何在10min内将DeepSeek接入MoonBit - Moonbit（月兔平台） - moonbitlang](https://images.openai.com/static-rsc-4/VE2814H9cyTai9c1fkCCCNpcbNfGo71yK-IDp6jQetaXe2RqxjVpo6L4EPgpYvQpUpBo2maudq9-YVppE5w7hIOUzP8LamnrpQw63lQKaKZKLTuVJVsRMeXIfZTaOye0RYAk7y1C-e8qXDPf0_IocDiyDKHcEYu6FZVcYBbJD0A?purpose=inline)
-
-[MoonBit](https://www.moonbitlang.com/?utm_source=chatgpt.com) — Closest to your Rust + Go vision
-
-A strongly typed, high-performance language targeting WebAssembly, JavaScript, and native executables, with integrated AI tooling. On October 10, 2026, its team published an article specifically about using MoonBit as a foundation for autonomous agents.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://docs.moonbitlang.com\&sz=32)
-
-MoonBit stable documentation
-
-+1
-
-
-
-[Zero | An agent-first language experiment.](https://images.openai.com/static-rsc-4/iKqZd7Sn6gNyKTbqpi6SjQigvdO_l0nJ197oPe5fqQScUy3VpzXXe_ivQVMV6Nosliozy__F0qU7n7kOp3ZVmrERrSTiPi66JY-2rV-61aTYsQoDSEw2zf5lR4kOHc1L1yfNS-VntDjAgIraRRbrwBrq2nEBQUHiSl0Nm5LG48U?purpose=inline)
-
-[Zerolang](https://github.com/vercel-labs/zerolang?utm_source=chatgpt.com) — Most radical agent-first architecture
-
-An experimental language from Vercel Labs. Agents modify a structured program graph using checked operations rather than primarily editing source-code text. Humans can still review a readable source representation.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
-
-GitHub
-
-+1
-
-
-
-[Vera, NanoLang, AILANG and others](https://agentlanguages.dev/?utm_source=chatgpt.com) — Verification-first languages
-
-These explore enforced contracts, formal proofs, explicit side effects, and other ways to make AI-written code checkable. An independent catalog tracked 42 agent-oriented language projects as of October 12, 2026, although many remain experimental.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://agentlanguages.dev\&sz=32)
-
-Agent Languages
-
-+1
-
-
-
-So you're identifying a real emerging direction, but you wouldn't be the first person pursuing it.
-
-The question is whether there's an approach substantially better than what these projects offer.
-
-## 2. What the ideal language would inherit
-
-If I were designing this, here's how I'd combine your four languages.
-
-| Parent      | What I'd keep                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| C           | Small runtime, predictable performance, direct access to hardware, C interoperability          |
-| C++         | Generics, high performance, compile-time specialization, control over memory layout            |
-| Go          | Simple syntax, fast builds, easy concurrency, a consistent toolchain                           |
-| Rust        | Memory safety, expressive types, explicit errors, ownership where it matters                   |
-| New in 2026 | Agent-native code editing, integrated verification, capability safety, compiler-guided repairs |
-
-I wouldn't reproduce C++'s enormous feature set or make everyone deal with Rust-style lifetime annotations.
-
-I'd aim for Go's simplicity, Rust's safety, and C's predictable performance.
-
-The bigger innovation, though, would be how the agent interacts with the language.
-
-## 3. Five things I'd design differently
-
-### A. The compiler is an API, not just a command-line program
-
-Today, an agent frequently reads files, edits text, compiles, interprets errors, and tries again.
-
-Instead, imagine an agent issuing structured commands:
-
-```
-nova inspect users.authenticate --json
-nova modify users.authenticate --patch change.json
-nova verify --json
-nova test --affected --json
-```
-
-The compiler would know the functions, dependencies, types, and callers being changed.
-
-The important difference is that agents could make semantic changes rather than textual edits. They could also reject stale modifications before applying them.
-
-Zerolang is already experimenting with this model.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
-
-GitHub
-
-
-
-### B. Everything has explicit capabilities
-
-This is particularly interesting for generated code that runs on servers.
-
-Imagine this hypothetical language syntax:
-
-```
-fn update_user(
-    db: Database,
-    id: UserId,
-    name: String
-) -> Result<User, Error>
-    effects {
-        db.read("users"),
-        db.write("users")
+pub fn reserve(available: I64, amount: I64) -> Result<I64, ReserveError> {
+    if (amount <= 0) {
+        return Result::Err(ReserveError::InvalidAmount);
     }
-{
-    let user = db.users.get(id)?
-    user.name = name
-    db.users.save(user)?
-    return user
+    if (amount > available) {
+        return Result::Err(ReserveError::InsufficientQuota);
+    }
+    return Result::Ok(available - amount);
 }
 ```
 
-The function declares precisely what external operations it needs.
+Its agreement lives separately in `contracts/quota.pact.ptn`:
 
-The compiler could reject an undeclared attempt to access a filesystem, send an HTTP request, or modify another database table. A capability-restricting runtime would also need to enforce those boundaries.
+```text
+module quota;
 
-That is substantially more valuable for unattended AI-generated software than merely making code shorter.
-
-### C. Correctness is built into the development loop
-
-Imagine every function optionally carrying executable tests, preconditions, postconditions, and properties.
-
-An agent changes a function and immediately gets a machine-readable report:
-
-Verification report
-
-1 issue
-
-Type checking passed
-
-Memory safety checks passed
-
-27 unit tests passed
-
-Property test failed
-
-Account balance can become negative when the transfer exceeds available funds.
-
-Illustrative report, not output from an existing compiler.
-
-The agent now has a concrete counterexample rather than a vague instruction to fix a bug. Of course, tests and proofs only establish what their specifications actually cover; they cannot guarantee that the original requirement was correct.
-
-### D. One canonical way to express each operation
-
-For people, having five ways to express something can be useful.
-
-For agents, it creates more choices, more inconsistency, and more opportunity to produce conflicting patterns.
-
-I'd severely restrict implicit conversions, complex macros, ambiguous operators, and unnecessarily interchangeable constructs.
-
-But there's a catch: models are already very familiar with established language syntax.
-
-A small May 2026 community benchmark of Zerolang reported zero first-attempt successes across 60 tests using three OpenAI models, frequently because the models generated familiar Rust- or Go-like syntax instead. That's a limited experiment, but it's a good warning about inventing unfamiliar syntax.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
-
-GitHub
-
-
-
-### E. The language understands its own architecture
-
-Instead of sending an agent 50 source files, imagine asking:
-
-```
-nova explain UserSession
-nova callers UserSession.create --json
-nova dependencies billing --depth 2 --json
-nova impact --change UserSession.expires_at
+pact reserve_safety for reserve {
+    requires available >= 0;
+    ensures match (result) {
+        Result::Ok(remaining) =>
+            amount > 0 && amount <= available &&
+            remaining == available - amount && remaining >= 0,
+        Result::Err(ReserveError::InvalidAmount) => amount <= 0,
+        Result::Err(ReserveError::InsufficientQuota) =>
+            amount > 0 && amount > available,
+    };
+}
 ```
 
-The compiler returns just the relevant semantic information.
+If an agent removes the insufficient-quota check, reserving four units from
+three would return `Ok(-1)`. That violates the pact. Returning an error for every
+request would violate it too: reserving two units from three must return `Ok(1)`.
 
-This could dramatically reduce the context an agent needs to read, and help it avoid modifications that break distant code.
+The planned verification loop gives the agent a concrete counterexample it can
+use to repair the implementation. The acceptance gate protects the pact, its
+helpers, and the required tests. Changing those requirements takes a separate,
+explicitly approved specification change, tied to the exact proposed diff.
 
-The language should also offer stable symbol identities, even when files move or functions are renamed.
+These examples follow the [0.1.0 specification](docs/spec/0.1.0/examples.md).
+They are not executable with the current CLI.
 
-## 4. The hardest question: Do we actually need a new language?
+## Why Pactern's approach fits agent development
 
-Here's where I'd be skeptical.
+A pact connects three things that belong together: **required behavior,
+permitted authority, and evidence for acceptance**. The design follows that
+agreement through the entire change.
 
-Rust already produces machine-readable compiler errors through Cargo's JSON output.&#x20;
+**Requirements survive the repair loop.** Protected contracts and acceptance
+criteria are checked against a trusted baseline outside the candidate change.
+That check also covers ordinary text edits and the helpers that give a contract
+its meaning. An agent shouldn't be able to redefine success by editing the file
+that tells CI what to accept.
 
-[image](https://www.google.com/s2/favicons?domain=https://doc.rust-lang.org\&sz=32)
+**Agents work with the compiler's understanding of the project.** The planned
+semantic API exposes signatures, callers, effects, and affected contracts.
+Changes name a target and a base revision, then validate in an isolated candidate
+before an atomic commit. A stale proposal is rejected before it can overwrite
+newer work. Readable `.ptn` files remain the source of truth, so ordinary editors
+and Git review remain part of the workflow.
 
-The Cargo Book
+**Permissions hold at execution time.** Effect declarations make requested
+operations visible in source. Scoped handles issued by the host authorize those
+operations for specific resources or tenants. The planned WebAssembly host
+denies ambient access and enforces execution, memory, and operation budgets.
+Declaring `db.write` cannot grant permission to write another customer's data.
+For the quota service, transactional storage must separately enforce atomic
+updates and tenant isolation.
 
-&#x20;Go already has strong tooling, fast builds, and relatively few language features.
+**Evidence says what was actually checked.** Static proofs, runtime guards, and
+executed tests have separate results. A timeout stays unknown; an unsupported
+proof stays unsupported. Evidence is designed to identify the exact source,
+artifact, toolchain, and policy it covers. A reviewer should be able to see both
+what passed and what remains unestablished.
 
+## Why build a language for this?
 
+The compiler and verifier need to agree on what a program means. So do the
+semantic editor and runtime. Pactern puts those responsibilities around one
+small language and a shared typed representation.
 
-Most of the functionality I've described could initially be built on top of existing languages.
+For example, `I64` arithmetic is specified to trap on overflow in every build
+mode. The interpreter, generated code, and prover must all preserve that rule.
+A proof over unlimited mathematical integers would say too little about an
+implementation that executes fixed-width arithmetic.
 
-A new language also starts with an enormous handicap: no ecosystem, little training data, limited tooling, and no production track record.
+The language uses familiar functions, braces, modules, `Option` and `Result`,
+with immutable values by default and explicit local mutation. The planned
+implementation uses Rust for the toolchain, a reference interpreter to check
+semantics, and C lowering to WebAssembly for deployment.
 
-So the argument for a new language can't simply be "AI agents will find it easier to use."
+This is the case for Pactern: the same agreement should guide the edit, the
+checks, and the resulting program. The project will measure whether that makes
+correct changes cheaper and easier to review against strong Rust and Go
+workflows. Comparative results are still ahead of us.
 
-It must demonstrate measurable improvements.
+## Start here
 
-## 5. How I'd prove the concept
+The first target is sandboxed backend components: business rules, validation,
+data transformations, and bounded jobs called by an existing application. The
+quota demo is the first test of the complete design.
 
-I'd first build a small compiler and agent development system in Rust, targeting C for native execution and eventually WebAssembly. I wouldn't attempt a full LLVM backend immediately.
-
-Then I'd benchmark it against Rust and Go using the same AI models and development tasks.
-
-## The experiment I'd run
-
-These are proposed targets, not measured results.
-
-| Successful task completion | Higher than Rust/Go |
-| -------------------------- | ------------------- |
-| Agent tokens consumed      | 30% lower           |
-| Compile–repair cycles      | 50% fewer           |
-| Escaped security bugs      | Substantially fewer |
-| Native runtime performance | Competitive with Go |
-
-If the agent-native system doesn't beat existing tools on meaningful workloads, I'd reconsider creating an entirely new language.
-
-## 6. There's a particularly interesting opportunity for Mainbrella
-
-Given the work you're doing with Mainbrella, I'd explore an agent-first, WebAssembly-oriented language and runtime for building backend applications.
-
-It would have native support for typed database access, authentication, API endpoints, database migrations, permissions, and sandboxed execution.
-
-Developers could describe an application, the agent would construct its implementation, the compiler would check permissions and types, and the platform could deploy the resulting artifact.
-
-That gives the language a real-world purpose before trying to become a universal replacement for Rust or Go.
-
-It would also let you explore the hardest part of agent-native programming: how much of a software system can be checked automatically before autonomous code is trusted to run?
-
-## My conclusion
-
-I think the biggest missed opportunity is not another language with slightly better syntax.
-
-It's this:
-
-What if we stopped treating source code as the primary interface between programmers and compilers, and instead made the compiler a structured, verifiable programming environment that AI agents operate directly?
-
-Humans would still have beautiful, readable source code. But agents would operate on typed symbols, dependency graphs, contracts, and validated changes.
-
-That could be a larger architectural shift than combining the best aspects of C++, Rust, and Go.
-
-And of all the projects I found, I'd study [Zerolang](https://github.com/vercel-labs/zerolang?utm_source=chatgpt.com) for its architecture and [MoonBit](https://www.moonbitlang.com/blog/building-agents-moonbit?utm_source=chatgpt.com) for its pragmatic language design before writing the first compiler.
-
-The opportunity is real. The challenge is creating something that makes AI-generated software meaningfully more reliable, not simply creating another language for AI to generate.&#x20;
-
-# name
-
-# Pactern
-
-**Pronounced “PACK-turn.” Pact + pattern.**
-
-That is my strongest pick. It has a clever second meaning, but enough restraint to sound like a serious programming language—not an AI wrapper or a novelty project.
-
-The positioning practically writes itself:
-
-> **Pactern**  
-> **Agents write. You set the terms.**  
-> A systems programming language designed for AI coding agents.
-
-## Why this name fits the actual opportunity
-
-**“Pact” gives it a purpose beyond generating code.** You establish what a program must do, what resources it can access, and which constraints it must respect. The agent supplies an implementation; the compiler and runtime would enforce the constraints the language can check.
-
-That is the interesting relationship: not “trust the AI,” but **“give the AI a contract.”**
-
-**“Pattern” connects it to programming without saying “code,” “script,” or “AI.”** Structure, composition, repeatability. Together, the two halves suggest creative work within explicit rules.
-
-And there is a small, memorable trick: **Pactern is one letter away from “pattern.”** It feels familiar without being an ordinary dictionary word competing with everything else.
-
-Importantly, the name would still make sense if the language eventually grew beyond its initial agent-focused audience. Contracts and predictable behavior are useful foundations for a language, not just a reference to this year’s tools.
-
-## It works in the places a language name has to work
-
-Say these aloud:
-
-> “We wrote the backend in Pactern.”  
-> “The Pactern compiler caught it.”  
-> “Learn Pactern.”  
-> “Pactern 1.0.”
-
-To my ear, those sound credible. There is no elaborate spelling joke to explain every time, and it doesn’t need a “Lang” suffix to complete the name.
-
-An illustrative command-line identity would also be straightforward:
+You can build and inspect the current toolchain now. The repository pins Rust
+1.98.1 through `rust-toolchain.toml`.
 
 ```sh
-pactern new hello
-pactern check --json
-pactern test
-pactern build
+cargo build --workspace --locked
+cargo test --workspace --locked
+cargo run -p pactern-cli -- version --json
+cargo run -p pactern-cli -- --help
 ```
 
-I would use **Pactern** in prose and **`pactern`** for the executable. Keep the surrounding naming simple; let the language name do the work.
+To install the CLI from this checkout:
 
-## The name gives you a better story to launch with
+```sh
+cargo install --path crates/pactern-cli --locked
+pactern version --json
+```
 
-I would not lead with:
+Help, version metadata, and structured tool diagnostics work today. Commands
+such as `check`, `verify`, `test`, `build`, and `apply` currently return explicit
+not-implemented errors. They do not process or modify a Pactern project.
 
-> “Rust, C, C++, and Go had a baby.”
+If you want to help build the language, start with the next
+[implementation milestone](MILESTONES.md): conformance fixtures and reproducible
+baseline tasks. Concrete edge cases, small failing programs, and challenges to
+the specification are useful contributions alongside compiler work.
 
-That is a useful description of your ingredients, but it doesn’t tell someone why they should switch.
+- [Language specification](docs/spec/0.1.0/README.md): semantics, grammar, and protocol contracts.
+- [Design plan](PLAN.md): architecture, tradeoffs, and evaluation criteria.
+- [Development guide](docs/development.md): workspace layout and checks.
+- [CLI reference](docs/cli/0.1.0/README.md): commands, JSON output, and exit codes.
 
-I would lead with:
-
-> **“We’re building Pactern: a language where agents write the code, but you define the contracts and permissions it must respect.”**
-
-Now there is a concrete idea for someone to remember and repeat.
-
-Then demonstrate it: an agent makes a change, the compiler identifies a violated contract with a useful counterexample, and the agent repairs the implementation without weakening the requirement. That would give the name something substantive to stand for.
-
-**The naming opportunity is not to sound more futuristic. It is to make the project’s central benefit easy to explain.** Pactern gives you that opening. Whether it earns adoption will depend on delivering the benefit.
-
-## The collision check—and the weakness
-
-My preliminary exact-name searches did **not surface an obvious programming language, compiler, or developer product called Pactern**. That is encouraging, not proof of availability. I have not verified domain registrations, package namespaces, or trademarks.
-
-I discarded other appealing candidates because of actual collisions: **Implish** already has a programming-language REPL, and **Invarn** already markets mobile continuous-integration tooling. [Implish](https://implish.org/)
-
-Pactern’s main weakness is also its wordplay: someone could initially read it as **“pattern.”** Before committing, I would test whether people can spell it after hearing “Pactern—pact plus pattern” once. That is the real-world test I would care about, rather than declaring any untested name a guaranteed 10/10.
-
-**My vote is Pactern: a distinctive name with a serious thesis behind it—agents can write the software without getting to invent the rules.**
+Pactern is pronounced **PACK-turn**. Licensed under [Apache 2.0](LICENSE).
