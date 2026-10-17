@@ -14,10 +14,11 @@ The ambition is to make correct changes cheaper to produce, easier to review,
 and safer to execute. “The best of them all” means demonstrating that outcome,
 not accumulating every feature of the five languages studied here.
 
-This repository currently contains a README and a license, with no compiler or
-runtime. Everything proposed below, including syntax and commands, is a design
-target. Research describes upstream documentation inspected on October 17, 2026;
-the upstream implementations were not independently built or audited.
+The repository now contains the milestone 2 Rust workspace and a CLI scaffold
+for version and help output. The compiler, runtime, and project commands are
+not implemented; most capabilities below remain design targets. Research
+describes upstream documentation inspected on October 17, 2026; the upstream
+implementations were not independently built or audited.
 
 ## 1. The opportunity
 

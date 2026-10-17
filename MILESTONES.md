@@ -16,6 +16,15 @@ These 30 v0.1 milestones exclude compiler self-hosting, general concurrency, bro
 
 ### 2. Establish the Rust workspace and CLI skeleton
 
+**Status:** Complete. The Rust workspace provides the shared `pactern` library
+and an installable `pactern` CLI with versioned help/version JSON, protocol 0.1.0
+tool diagnostics, and explicit unavailable-command errors. See the
+[development guide](docs/development.md) and [CLI contract](docs/cli/0.1.0/README.md).
+A clean source copy builds with the lockfile, and a temporary installation runs
+outside the checkout. Library, CLI integration, and documentation tests pass;
+formatting, Clippy, and emitted JSON schema validation pass. No compiler, runtime,
+verification, or semantic-edit implementation is claimed.
+
 **Languages/formats:** Rust; TOML manifests. **Done when:** a clean checkout builds an installable `pactern` CLI and library with versioned command and JSON-output entry points.
 
 ### 3. Seed conformance fixtures and baseline tasks

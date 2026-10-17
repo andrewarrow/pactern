@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pactern:cli:0.1.0:help",
+  "title": "Pactern CLI 0.1.0 help output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cli_version",
+    "kind",
+    "text"
+  ],
+  "properties": {
+    "cli_version": {
+      "const": "0.1.0",
+      "description": "Version of this CLI output contract; independent of the diagnostic protocol version."
+    },
+    "kind": {
+      "const": "help"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable help text, not a machine-readable command discovery API."
+    }
+  }
+}

@@ -1,3 +1,22 @@
+# Pactern
+
+Pactern is an experimental language and toolchain for software built under
+human-owned contracts. The repository now has a Rust workspace and installable
+CLI skeleton; parsing, compilation, execution, and verification are future work.
+
+```sh
+cargo build --workspace --locked
+cargo run -p pactern-cli -- version --json
+cargo install --path crates/pactern-cli --locked
+```
+
+See the [development guide](docs/development.md),
+[CLI reference](docs/cli/0.1.0/README.md),
+[language specification](docs/spec/0.1.0/README.md), and
+[implementation milestones](MILESTONES.md). The original exploration follows.
+
+## Original exploration
+
 Yes. I think there's a genuine opportunity for a new programming language in 2026 designed around AI coding agents. But the breakthrough wouldn't be combining Rust, C, C++, and Go into a nicer syntax.
 
 It would be designing a language around a fundamentally different assumption:
