@@ -1,0 +1,39 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "diagnostic",
+  "source_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "code": "PTN_VERIFY_REFUTED",
+  "severity": "error",
+  "phase": "verify",
+  "message": "The result can violate reserve_safety.",
+  "symbol_id": "sym_22222222222222222222222222222222",
+  "pact_id": "pact_33333333333333333333333333333333",
+  "obligation_id": "obl_44444444444444444444444444444444",
+  "verification": {
+    "claim": "postcondition",
+    "status": "refuted"
+  },
+  "counterexample": {
+    "origin": "solver_model",
+    "replayed": false,
+    "bindings": [
+      {
+        "name": "available",
+        "value": {
+          "type": "I64",
+          "value": "3"
+        }
+      },
+      {
+        "name": "amount",
+        "value": {
+          "type": "I64",
+          "value": "4"
+        }
+      }
+    ]
+  },
+  "notes": [
+    "The model describes a candidate counterexample; execution has not replayed it."
+  ]
+}

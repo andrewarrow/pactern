@@ -1,0 +1,15 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "change_request",
+  "request_id": "repair-reserve-1",
+  "transaction": "implementation",
+  "base_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected_policy_baseline": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "operations": [
+    {
+      "op": "write_file",
+      "path": "src/quota.ptn",
+      "content": "module quota;"
+    }
+  ]
+}

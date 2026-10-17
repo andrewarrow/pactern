@@ -2,13 +2,15 @@
 
 These are sequential planned milestones; each has an observable exit criterion. Work may proceed in parallel only where prerequisites are ready. See [PLAN.md](PLAN.md) for the design rationale and v0.1 scope.
 
-Rust is the compiler, tooling, and sandbox-host language. The Rust compiler lowers Pactern to generated C, which is compiled to WebAssembly; a small C guest runtime supplies the runtime ABI and garbage collection. SMT support means Rust emits SMT-LIB for an external solver. Markdown, EBNF, JSON, TOML, and YAML below are data or documentation formats, not language implementations. Nothing in this roadmap is claimed complete.
+Rust is the compiler, tooling, and sandbox-host language. The Rust compiler lowers Pactern to generated C, which is compiled to WebAssembly; a small C guest runtime supplies the runtime ABI and garbage collection. SMT support means Rust emits SMT-LIB for an external solver. Markdown, EBNF, JSON, TOML, and YAML below are data or documentation formats, not language implementations. Completion status is recorded below; unmarked milestones remain planned.
 
 These 30 v0.1 milestones exclude compiler self-hosting, general concurrency, broad FFI, and a production native backend.
 
 ## Specify and measure
 
 ### 1. Specify the first language and protocol contracts
+
+**Status:** Complete as a reviewable specification draft. See the [0.1.0 specification bundle](docs/spec/0.1.0/README.md) for the language semantics, grammar, protocol schemas, and edge-case examples. No compiler or runtime implementation is claimed.
 
 **Languages/formats:** Markdown specification, EBNF grammar, JSON Schema documents. No code implementation. **Done when:** the versioned core semantics, diagnostic and change-request schemas, effect boundary, and supported subset are reviewable, with examples resolving edge cases for integers, errors, handles, and contracts.
 

@@ -1,0 +1,154 @@
+(* Pactern 0.1.0 draft: concrete syntax, not an implemented parser.
+   Entry points: implementation_file and contract_file. End of input follows
+   either entry point. Both require their module declaration first.
+
+   Notation: = defines; , concatenates; | chooses; [ ] is optional;
+   { } repeats zero or more times; ( ) groups; ; ends a production.
+   Single- or double-quoted text is a literal terminal. ? ... ? is a lexical
+   special sequence described in prose. Parenthesized asterisks delimit comments.
+
+   Syntax productions operate on tokens. Lexical productions operate on Unicode
+   scalars decoded from valid UTF-8. Whitespace and comments separate tokens and
+   otherwise have no significance; they cannot split a token. A UTF-8 BOM is
+   not accepted. Tokens use maximal munch; multi-character punctuation is
+   :: -> => == != <= >= && ||. There is no >> token: nested type closers are
+   separate > tokens. Keywords match whole identifiers, never prefixes.
+   Adjacent keyword and identifier tokens require a lexical separator.
+
+   This grammar specifies syntax only. Name resolution, typing, flow, effect,
+   handle, pattern-coverage, contract, and numeric-range rules are in language.md.
+*)
+
+implementation_file = module_declaration, { import_declaration },
+                      { declaration } ;
+contract_file = module_declaration, { import_declaration }, pact_declaration,
+                { pact_declaration } ;
+module_declaration = "module", path, ";" ;
+import_declaration = "import", path, ";" ;
+path = identifier, { "::", identifier } ;
+qualified_path = identifier, "::", identifier, { "::", identifier } ;
+
+declaration = [ "pub" ], ( function_declaration | struct_declaration
+                        | enum_declaration ) ;
+function_declaration = "fn", identifier, [ type_parameters ], "(",
+                       [ parameters ], ")", "->", type, [ effects ], block ;
+type_parameters = "<", identifier, { ",", identifier }, [ "," ], ">" ;
+parameters = parameter, { ",", parameter }, [ "," ] ;
+parameter = identifier, ":", [ "borrow" ], type ;
+type = path, [ type_arguments ] ;
+type_arguments = "<", type, { ",", type }, [ "," ], ">" ;
+effects = "effects", "{", [ effect_names ], "}" ;
+effect_names = effect_name, { ",", effect_name }, [ "," ] ;
+effect_name = identifier, { ".", identifier } ;
+
+struct_declaration = "struct", identifier, [ type_parameters ], "{",
+                     [ field_declarations ], "}" ;
+field_declarations = field_declaration, { ",", field_declaration }, [ "," ] ;
+field_declaration = identifier, ":", type ;
+enum_declaration = "enum", identifier, [ type_parameters ], "{", variant,
+                   { ",", variant }, [ "," ], "}" ;
+variant = identifier, [ "(", type, { ",", type }, [ "," ], ")" ] ;
+
+block = "{", { statement }, "}" ;
+statement = let_statement | assignment_statement | expression_statement
+          | return_statement | if_statement | while_statement
+          | break_statement | continue_statement | block ;
+let_statement = "let", [ "mut" ], identifier, [ ":", type ], "=",
+                expression, ";" ;
+assignment_statement = identifier, "=", expression, ";" ;
+expression_statement = expression, ";" ;
+return_statement = "return", [ expression ], ";" ;
+if_statement = "if", "(", expression, ")", block,
+               [ "else", ( block | if_statement ) ] ;
+while_statement = "while", "(", expression, ")", block ;
+break_statement = "break", ";" ;
+continue_statement = "continue", ";" ;
+
+(* Precedence increases down this chain. Repeated binary operators associate
+   left; prefix operators associate right. Equality and ordering permit only
+   one operator at their respective level; a chain such as a < b < c is invalid.
+   Parenthesized expressions can explicitly nest any expression.
+*)
+expression = logical_or ;
+logical_or = logical_and, { "||", logical_and } ;
+logical_and = equality, { "&&", equality } ;
+equality = ordering, [ ( "==" | "!=" ), ordering ] ;
+ordering = additive, [ ( "<" | "<=" | ">" | ">=" ), additive ] ;
+additive = multiplicative, { ( "+" | "-" ), multiplicative } ;
+multiplicative = prefix, { ( "*" | "/" | "%" ), prefix } ;
+prefix = ( "!" | "-" ), prefix | postfix ;
+postfix = primary, { call_suffix | field_suffix | index_suffix } ;
+call_suffix = "(", [ arguments ], ")" ;
+arguments = argument, { ",", argument }, [ "," ] ;
+argument = expression | "borrow", identifier ;
+field_suffix = ".", identifier ;
+index_suffix = "[", expression, "]" ;
+primary = literal | unit_literal | list_literal | record_literal | "result"
+        | generic_call | path | "(", expression, ")" | match_expression ;
+generic_call = path, "::", type_arguments, call_suffix ;
+unit_literal = "(", ")" ;
+list_literal = "[", [ expressions ], "]" ;
+expressions = expression, { ",", expression }, [ "," ] ;
+record_literal = path, "{", [ field_values ], "}" ;
+field_values = field_value, { ",", field_value }, [ "," ] ;
+field_value = identifier, ":", expression ;
+
+match_expression = "match", "(", expression, ")", "{", match_arm,
+                   { ",", match_arm }, [ "," ], "}" ;
+match_arm = pattern, "=>", expression ;
+pattern = "_" | identifier | boolean_literal | integer_pattern
+        | string_literal | variant_pattern ;
+integer_pattern = [ "-" ], integer_literal ;
+variant_pattern = qualified_path,
+                  [ "(", pattern, { ",", pattern }, [ "," ], ")" ] ;
+
+pact_declaration = "pact", identifier, "for", path, "{", pact_clause,
+                   { pact_clause }, "}" ;
+pact_clause = ( "requires" | "ensures" ), expression, ";" ;
+
+(* Lexical productions. Built-in type and enum names are identifiers, not
+   keywords. `_` is the wildcard token, not a bindable identifier. The keyword
+   `result` is valid only in ensures clauses, as defined in language.md. An integer
+   token is one maximal run of decimal digits with no leading zeroes except 0;
+   a preceding - is a separate token and may have intervening trivia. Semantic
+   range checks admit -9223372036854775808 but reject the positive inner literal
+   in -(9223372036854775808). No magnitude is truncated or wrapped by the lexer.
+*)
+literal = boolean_literal | integer_literal | string_literal ;
+boolean_literal = "true" | "false" ;
+identifier = identifier_start, { identifier_continue } ;
+(* The spelling of identifier must be neither a keyword nor exactly `_`. *)
+identifier_start = ascii_letter | "_" ;
+identifier_continue = identifier_start | digit ;
+ascii_letter = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I"
+             | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R"
+             | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+             | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+             | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r"
+             | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+nonzero_digit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+integer_literal = "0" | nonzero_digit, { digit } ;
+keyword = "module" | "import" | "pub" | "fn" | "struct" | "enum"
+        | "effects" | "let" | "mut" | "return" | "if" | "else"
+        | "while" | "break" | "continue" | "match" | "true" | "false"
+        | "borrow" | "pact" | "for" | "requires" | "ensures" | "result" ;
+
+string_literal = '"', { string_character | escape_sequence }, '"' ;
+string_character = ? Unicode scalar except U+0000..U+001F, U+0022, U+005C ? ;
+escape_sequence = '\', ( '"' | '\' | "n" | "r" | "t" | unicode_escape ) ;
+unicode_escape = "u{", hex_digit, [ hex_digit ], [ hex_digit ],
+                 [ hex_digit ], [ hex_digit ], [ hex_digit ], "}" ;
+hex_digit = digit | "a" | "b" | "c" | "d" | "e" | "f"
+                 | "A" | "B" | "C" | "D" | "E" | "F" ;
+(* The one-to-six hexadecimal digits must denote a Unicode scalar: at most
+   U+10FFFF and outside U+D800..U+DFFF. No other escape is accepted.
+*)
+
+trivia = whitespace | line_comment | block_comment ;
+whitespace = ? one of U+0020 SPACE, U+0009 TAB, U+000A LF, U+000D CR ? ;
+line_comment = "//", { ? Unicode scalar other than CR or LF ? } ;
+block_comment = "/*", ? zero or more Unicode scalars before the first */ ?, "*/" ;
+(* Block comments do not nest. EOF before their closing */ is a lexical error.
+   CRLF is one newline for diagnostic line counting, as are lone CR and LF.
+*)

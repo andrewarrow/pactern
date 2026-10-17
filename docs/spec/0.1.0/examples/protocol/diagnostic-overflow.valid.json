@@ -1,0 +1,18 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "diagnostic",
+  "source_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "code": "PTN_RUNTIME_INTEGER_OVERFLOW",
+  "severity": "error",
+  "phase": "runtime",
+  "message": "I64 addition exceeds the maximum value.",
+  "span": {
+    "path": "src/limits.ptn",
+    "start_byte": 92,
+    "end_byte": 101
+  },
+  "symbol_id": "sym_11111111111111111111111111111111",
+  "notes": [
+    "The invocation traps; this is not a Result::Err value."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "change_request",
+  "request_id": "rename-helper-1",
+  "transaction": "implementation",
+  "base_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected_policy_baseline": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "operations": [
+    {
+      "op": "rename_symbol",
+      "target": {
+        "symbol_id": "sym_55555555555555555555555555555555",
+        "expected_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "new_name": "remaining_quota"
+    }
+  ]
+}

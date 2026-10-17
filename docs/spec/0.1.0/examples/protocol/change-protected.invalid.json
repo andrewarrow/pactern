@@ -1,0 +1,18 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "change_request",
+  "request_id": "rewrite-protected-helper-1",
+  "transaction": "implementation",
+  "base_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected_policy_baseline": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "operations": [
+    {
+      "op": "replace_function_body",
+      "target": {
+        "symbol_id": "sym_77777777777777777777777777777777",
+        "expected_hash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "body": "{ return true; }"
+    }
+  ]
+}

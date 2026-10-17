@@ -1,0 +1,18 @@
+{
+  "protocol_version": "0.1.0",
+  "kind": "change_request",
+  "request_id": "revise-increment-pact-1",
+  "transaction": "specification",
+  "base_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expected_policy_baseline": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "operations": [
+    {
+      "op": "replace_pact",
+      "target": {
+        "pact_id": "pact_66666666666666666666666666666666",
+        "expected_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "declaration": "pact increment_safety for increment {\n    requires value < 9223372036854775807;\n    ensures result == value + 1;\n}"
+    }
+  ]
+}

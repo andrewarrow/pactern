@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pactern:protocol:0.1.0:diagnostic",
+  "title": "Pactern 0.1.0 diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "kind",
+    "code",
+    "severity",
+    "phase",
+    "message"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": "0.1.0"
+    },
+    "kind": {
+      "const": "diagnostic"
+    },
+    "source_revision": {
+      "$ref": "#/$defs/digest"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^PTN_[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?![\\s\\S])"
+    },
+    "severity": {
+      "enum": [
+        "error",
+        "warning",
+        "note"
+      ]
+    },
+    "phase": {
+      "enum": [
+        "lex",
+        "parse",
+        "resolve",
+        "type",
+        "effect",
+        "contract",
+        "verify",
+        "runtime",
+        "change",
+        "policy",
+        "tool"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "span": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/span"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "symbol_id": {
+      "$ref": "#/$defs/symbol_id"
+    },
+    "pact_id": {
+      "$ref": "#/$defs/pact_id"
+    },
+    "obligation_id": {
+      "$ref": "#/$defs/obligation_id"
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim",
+        "status"
+      ],
+      "properties": {
+        "claim": {
+          "enum": [
+            "precondition_consistency",
+            "postcondition",
+            "absence_of_traps",
+            "termination"
+          ]
+        },
+        "status": {
+          "enum": [
+            "proved",
+            "refuted",
+            "unknown",
+            "unsupported"
+          ]
+        }
+      }
+    },
+    "counterexample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "replayed",
+        "bindings"
+      ],
+      "properties": {
+        "origin": {
+          "enum": [
+            "solver_model",
+            "test_execution",
+            "bounded_exploration"
+          ]
+        },
+        "replayed": {
+          "type": "boolean"
+        },
+        "bindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "$ref": "#/$defs/value"
+              }
+            }
+          }
+        }
+      }
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "message",
+          "span"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "span": {
+            "$ref": "#/$defs/span"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "counterexample"
+        ]
+      },
+      "then": {
+        "required": [
+          "source_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "span"
+        ],
+        "properties": {
+          "span": {
+            "type": "object"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "source_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "related"
+        ],
+        "properties": {
+          "related": {
+            "minItems": 1
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "source_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "obligation_id"
+        ]
+      },
+      "then": {
+        "required": [
+          "source_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "verification"
+        ]
+      },
+      "then": {
+        "required": [
+          "source_revision",
+          "obligation_id"
+        ],
+        "properties": {
+          "phase": {
+            "const": "verify"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])",
+      "minLength": 71,
+      "maxLength": 71
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "(^/)|(/$)|(//)|(\\\\)|:|(^|/)\\.{1,2}(/|$)|[\\u0000-\\u001f\\u007f]"
+      }
+    },
+    "byte_offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "start_byte",
+        "end_byte"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "start_byte": {
+          "$ref": "#/$defs/byte_offset"
+        },
+        "end_byte": {
+          "$ref": "#/$defs/byte_offset"
+        }
+      }
+    },
+    "symbol_id": {
+      "type": "string",
+      "pattern": "^sym_[0-9a-f]{32}(?![\\s\\S])",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "pact_id": {
+      "type": "string",
+      "pattern": "^pact_[0-9a-f]{32}(?![\\s\\S])",
+      "minLength": 37,
+      "maxLength": 37
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^obl_[0-9a-f]{32}(?![\\s\\S])",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "value": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "I64"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^(0|-?[1-9][0-9]*)(?![\\s\\S])",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "Bool"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "String"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
