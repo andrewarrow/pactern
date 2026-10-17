@@ -20,62 +20,122 @@ respects the agreement—and return useful evidence when it doesn't.
 skeleton are available. Compilation, verification, execution, and semantic edits
 remain to be implemented. The examples and workflow below describe the design.
 
-## A bug fix should preserve the requirement
+## Why write the rules twice?
 
-Suppose your service reserves capacity from a customer's quota. Valid requests
-must succeed, invalid requests must return the right error, and the remaining
-quota must never become negative.
+Contracts repeat some business knowledge. That is a cost, and the independent
+check needs to justify it. In the small [quota example](docs/spec/0.1.0/examples.md),
+the implementation and pact both describe valid amounts, insufficient quota,
+and the remaining balance. For a function that small, the repetition is conspicuous.
 
-The implementation lives in `src/quota.ptn`:
+The implementation computes an answer. The pact states which answers are
+acceptable. Sharing the entire result-producing helper between them can defeat
+the check: if both use the same faulty calculation, they can agree on the wrong
+answer. This is the same reason a useful test needs an expected result that does
+not simply call the function under test again.
+
+Separate files let requirements have different change rules from implementations.
+Under the planned acceptance policy, an agent can repair the code while the
+accepted pact and its meaning-defining helpers stay protected. A legitimate
+requirement change gets its own approval, tied to the exact diff.
+
+That does not make an exhaustive pact worthwhile for every small helper.
+The strongest use is an important boundary where a few stable properties can
+constrain many implementation decisions. Ordinary code reuse still belongs
+inside the implementation; the contract needs enough independence to catch its
+mistakes.
+
+## Example: allocating workers across two queues
+
+Suppose a scheduler has a fixed worker budget and two queues with different
+amounts of ready work. It should split workers evenly, give a queue no more
+workers than it needs, and transfer unused capacity to the other queue. It should
+leave workers idle only when both queues have all the workers they need.
+
+Here is one implementation in `src/scheduler.ptn`. It takes an initial split,
+caps each allocation at demand, then redistributes the spare capacity:
 
 ```text
-module quota;
+module scheduler;
 
-pub enum ReserveError {
-    InvalidAmount,
-    InsufficientQuota,
+pub struct Allocation {
+    a: I64,
+    b: I64,
 }
 
-pub fn reserve(available: I64, amount: I64) -> Result<I64, ReserveError> {
-    if (amount <= 0) {
-        return Result::Err(ReserveError::InvalidAmount);
+pub fn allocate_workers(budget: I64, demand_a: I64, demand_b: I64) -> Allocation {
+    let mut a = budget / 2;
+    if (a > demand_a) {
+        a = demand_a;
     }
-    if (amount > available) {
-        return Result::Err(ReserveError::InsufficientQuota);
+
+    let mut b = budget - a;
+    if (b > demand_b) {
+        b = demand_b;
     }
-    return Result::Ok(available - amount);
+
+    let spare = budget - a - b;
+    if (spare > demand_a - a) {
+        a = demand_a;
+    } else {
+        a = a + spare;
+    }
+
+    return Allocation { a: a, b: b };
 }
 ```
 
-Its agreement lives separately in `contracts/quota.pact.ptn`:
+The pact in `contracts/scheduler.pact.ptn` specifies the acceptable allocation:
 
 ```text
-module quota;
+module scheduler;
 
-pact reserve_safety for reserve {
-    requires available >= 0;
-    ensures match (result) {
-        Result::Ok(remaining) =>
-            amount > 0 && amount <= available &&
-            remaining == available - amount && remaining >= 0,
-        Result::Err(ReserveError::InvalidAmount) => amount <= 0,
-        Result::Err(ReserveError::InsufficientQuota) =>
-            amount > 0 && amount > available,
-    };
+pact allocation_rules for allocate_workers {
+    requires budget >= 0 && demand_a >= 0 && demand_b >= 0;
+
+    ensures result.a >= 0 && result.a <= demand_a;
+    ensures result.b >= 0 && result.b <= demand_b;
+    ensures result.a <= budget && result.b <= budget - result.a;
+
+    ensures result.a + result.b == budget ||
+        (result.a == demand_a && result.b == demand_b);
+
+    ensures result.a - result.b <= 1 || result.b == demand_b;
+    ensures result.b - result.a <= 1 || result.a == demand_a;
 }
 ```
 
-If an agent removes the insufficient-quota check, reserving four units from
-three would return `Ok(-1)`. That violates the pact. Returning an error for every
-request would violate it too: reserving two units from three must return `Ok(1)`.
+The clauses require valid allocations, respect for the total budget, no wasted
+capacity while demand remains, and a balanced split. A queue can receive more
+than one extra worker only when the other queue's demand is fully met. The
+budget check uses subtraction so that checking a bad allocation cannot overflow
+by adding two large values; the later sum is safe after that check passes.
 
-The planned verification loop gives the agent a concrete counterexample it can
-use to repair the implementation. The acceptance gate protects the pact, its
-helpers, and the required tests. Changing those requirements takes a separate,
-explicitly approved specification change, tied to the exact proposed diff.
+Notice what the pact leaves open. It does not mention the initial half split,
+the order of the demand checks, or the redistribution step. With five workers
+and two busy queues, both `(2, 3)` and `(3, 2)` satisfy it. An agent could change
+which queue receives the odd worker or rewrite the allocation algorithm while
+preserving the same requirements.
 
-These examples follow the [0.1.0 specification](docs/spec/0.1.0/examples.md).
-They are not executable with the current CLI.
+Those requirements catch several different implementation mistakes:
+
+| Inputs `(budget, demand_a, demand_b)` | Faulty result `(a, b)` | Violated requirement |
+| --- | --- | --- |
+| `(10, 100, 2)` | `(5, 2)` after omitting redistribution | Three workers sit idle while queue A has work. |
+| `(5, 100, 100)` | `(3, 3)` after rounding both shares up | Six workers are allocated from a budget of five. |
+| `(10, 100, 100)` | `(10, 0)` | The split is unbalanced while queue B still needs workers. |
+| `(10, 100, 100)` | `(0, 0)` | Returning nothing fails the requirement to use available capacity. |
+
+This is where the duplication earns its place: the pact describes properties of
+the result independently of the steps that produce it. A repair has to restore
+those properties without weakening them. The pact still needs review—it covers
+one allocation decision, not fairness over time, job completion, or concurrent
+updates to queue state.
+
+The example uses the loop-free integer and record subset targeted by the
+[language specification](docs/spec/0.1.0/language.md). It is illustrative source;
+the compiler and verification pipeline are not implemented yet. The planned
+pipeline would check postconditions, arithmetic traps, and termination as
+separate claims, and report counterexamples when it refutes a supported claim.
 
 ## Why Pactern's approach fits agent development
 
