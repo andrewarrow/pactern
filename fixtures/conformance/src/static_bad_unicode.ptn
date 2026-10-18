@@ -1,0 +1,2 @@
+module static_bad_unicode;
+pub fn run() -> String { return "\u{D800}"; }

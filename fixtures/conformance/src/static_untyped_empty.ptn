@@ -1,0 +1,2 @@
+module static_untyped_empty;
+pub fn run() -> I64 { let values = []; return 0; }

@@ -1,0 +1,1117 @@
+{
+  "format_version": "0.1.0",
+  "language_version": "0.1.0",
+  "cases": [
+    {
+      "id": "quota-success",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "2"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Ok",
+          "value": "1"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-invalid-amount",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "0"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Err",
+          "error": "InvalidAmount"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-invalid-negative-amount",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "-1"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Err",
+          "error": "InvalidAmount"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-insufficient",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "4"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Err",
+          "error": "InsufficientQuota"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-zero-available",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "0",
+        "1"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Err",
+          "error": "InsufficientQuota"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-maximum",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "9223372036854775807",
+        "1"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Ok",
+          "value": "9223372036854775806"
+        }
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-exact-exhaustion",
+      "source": "src/quota.ptn",
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "3"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Ok",
+          "value": "0"
+        }
+      },
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-minimum-amount-is-rejected",
+      "source": "src/quota.ptn",
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "-9223372036854775808"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Err",
+          "error": "InvalidAmount"
+        }
+      },
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-maximum-exact-exhaustion",
+      "source": "src/quota.ptn",
+      "entry": "quota::reserve",
+      "args": [
+        "9223372036854775807",
+        "9223372036854775807"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "tag": "Ok",
+          "value": "0"
+        }
+      },
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "pass"
+      }
+    },
+    {
+      "id": "quota-precondition-fails",
+      "source": "src/quota.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "-1",
+        "1"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "precondition"
+      },
+      "pacts": {
+        "precondition": "fail",
+        "postcondition": "not_reached"
+      }
+    },
+    {
+      "id": "pair-totals-normal",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      ],
+      "expected": {
+        "kind": "return",
+        "value": [
+          "3",
+          "7"
+        ]
+      }
+    },
+    {
+      "id": "pair-totals-negative",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "-5",
+          "2",
+          "0",
+          "-3"
+        ]
+      ],
+      "expected": {
+        "kind": "return",
+        "value": [
+          "-3",
+          "-3"
+        ]
+      }
+    },
+    {
+      "id": "pair-totals-short-list",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "1",
+          "2",
+          "3"
+        ]
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "bounds"
+      }
+    },
+    {
+      "id": "pair-totals-empty-list",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        []
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "bounds"
+      }
+    },
+    {
+      "id": "pair-totals-overflow-left-first",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "9223372036854775807",
+          "1",
+          "0",
+          "0"
+        ]
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "pair-first-overflow-precedes-second-pair-bounds",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "9223372036854775807",
+          "1"
+        ]
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "pair-second-overflow",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "0",
+          "0",
+          "9223372036854775807",
+          "1"
+        ]
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "pair-extra-elements-ignored",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "args": [
+        [
+          "1",
+          "2",
+          "3",
+          "4",
+          "99"
+        ]
+      ],
+      "expected": {
+        "kind": "return",
+        "value": [
+          "3",
+          "7"
+        ]
+      }
+    },
+    {
+      "id": "summary-positive",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "storage",
+        "2",
+        "3"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "label": "storage",
+          "total": "5",
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "summary-zero",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "zero",
+        "0",
+        "0"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "label": "zero",
+          "total": "0",
+          "active": false
+        }
+      }
+    },
+    {
+      "id": "summary-empty-label",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "",
+        "0",
+        "0"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "label": "",
+          "total": "0",
+          "active": false
+        }
+      }
+    },
+    {
+      "id": "summary-unicode",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "café ☕",
+        "-2",
+        "1"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "label": "café ☕",
+          "total": "-1",
+          "active": false
+        }
+      }
+    },
+    {
+      "id": "summary-long-label-preserved",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "label-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "0",
+        "1"
+      ],
+      "expected": {
+        "kind": "return",
+        "value": {
+          "label": "label-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "total": "1",
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "summary-overflow",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "limit",
+        "9223372036854775807",
+        "1"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "summary-negative-overflow",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "args": [
+        "underflow",
+        "-9223372036854775808",
+        "-1"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "integer-maximum",
+      "source": "src/integers.ptn",
+      "entry": "integers::max_value",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "9223372036854775807"
+      }
+    },
+    {
+      "id": "integer-minimum",
+      "source": "src/integers.ptn",
+      "entry": "integers::min_value",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "-9223372036854775808"
+      }
+    },
+    {
+      "id": "division-truncates-toward-zero",
+      "source": "src/integers.ptn",
+      "entry": "integers::divide_negative",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "-2"
+      }
+    },
+    {
+      "id": "remainder-keeps-dividend-sign",
+      "source": "src/integers.ptn",
+      "entry": "integers::remainder_negative",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "-1"
+      }
+    },
+    {
+      "id": "and-short-circuits",
+      "source": "src/integers.ptn",
+      "entry": "integers::short_and",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": false
+      }
+    },
+    {
+      "id": "or-short-circuits",
+      "source": "src/integers.ptn",
+      "entry": "integers::short_or",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": true
+      }
+    },
+    {
+      "id": "string-escape-equality",
+      "source": "src/integers.ptn",
+      "entry": "integers::string_equal",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": true
+      }
+    },
+    {
+      "id": "string-escapes-decode",
+      "source": "src/integers.ptn",
+      "entry": "integers::string_escape",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "line\nquote: \""
+      }
+    },
+    {
+      "id": "annotated-empty-list",
+      "source": "src/integers.ptn",
+      "entry": "integers::empty_length_value",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "0"
+      }
+    },
+    {
+      "id": "explicit-local-mutation",
+      "source": "src/integers.ptn",
+      "entry": "integers::mutable_value",
+      "args": [],
+      "expected": {
+        "kind": "return",
+        "value": "2"
+      }
+    },
+    {
+      "id": "option-some-match",
+      "source": "src/integers.ptn",
+      "entry": "integers::match_option",
+      "args": [
+        {
+          "tag": "Some",
+          "value": "9"
+        }
+      ],
+      "expected": {
+        "kind": "return",
+        "value": "9"
+      }
+    },
+    {
+      "id": "option-none-match",
+      "source": "src/integers.ptn",
+      "entry": "integers::match_option",
+      "args": [
+        {
+          "tag": "None"
+        }
+      ],
+      "expected": {
+        "kind": "return",
+        "value": "0"
+      }
+    },
+    {
+      "id": "integer-add-overflow",
+      "source": "src/integers.ptn",
+      "entry": "integers::add_max_one",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "integer-negate-minimum",
+      "source": "src/integers.ptn",
+      "entry": "integers::negate_min",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "division-by-zero",
+      "source": "src/integers.ptn",
+      "entry": "integers::divide_zero",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "remainder-by-zero",
+      "source": "src/integers.ptn",
+      "entry": "integers::remainder_zero",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "minimum-divided-by-negative-one",
+      "source": "src/integers.ptn",
+      "entry": "integers::divide_min_negative_one",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "minimum-remainder-negative-one",
+      "source": "src/integers.ptn",
+      "entry": "integers::remainder_min_negative_one",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "integer_overflow"
+      }
+    },
+    {
+      "id": "arguments-evaluate-left-to-right",
+      "source": "src/integers.ptn",
+      "entry": "integers::argument_order",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "record-fields-evaluate-left-to-right",
+      "source": "src/integers.ptn",
+      "entry": "integers::record_field_order",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "list-elements-evaluate-left-to-right",
+      "source": "src/integers.ptn",
+      "entry": "integers::list_element_order",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "binary-operands-evaluate-left-to-right",
+      "source": "src/integers.ptn",
+      "entry": "integers::operand_order",
+      "args": [],
+      "expected": {
+        "kind": "trap",
+        "category": "division_by_zero"
+      }
+    },
+    {
+      "id": "negative-list-index-traps",
+      "source": "src/integers.ptn",
+      "entry": "integers::list_item",
+      "args": [
+        "-1"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "bounds"
+      }
+    },
+    {
+      "id": "list-index-at-length",
+      "source": "src/integers.ptn",
+      "entry": "integers::list_item",
+      "args": [
+        "2"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "bounds"
+      }
+    },
+    {
+      "id": "out-of-range-positive-literal",
+      "source": "src/static_range.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_INTEGER_RANGE"
+      }
+    },
+    {
+      "id": "parenthesized-minimum-literal",
+      "source": "src/static_parenthesized_min.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_INTEGER_RANGE"
+      }
+    },
+    {
+      "id": "leading-zero-token",
+      "source": "src/static_leading_zero.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "lex",
+        "code": "PTN_LEX_INVALID_INTEGER"
+      }
+    },
+    {
+      "id": "chained-comparison",
+      "source": "src/static_chained_compare.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "parse",
+        "code": "PTN_PARSE_UNEXPECTED_TOKEN"
+      }
+    },
+    {
+      "id": "assignment-to-immutable",
+      "source": "src/static_immutable.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_IMMUTABLE_ASSIGNMENT"
+      }
+    },
+    {
+      "id": "reassignment-changes-type",
+      "source": "src/static_type_reassignment.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_MISMATCH"
+      }
+    },
+    {
+      "id": "empty-list-needs-type",
+      "source": "src/static_untyped_empty.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_CANNOT_INFER"
+      }
+    },
+    {
+      "id": "string-indexing-rejected",
+      "source": "src/static_string_index.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_INVALID_INDEX"
+      }
+    },
+    {
+      "id": "surrogate-escape-rejected",
+      "source": "src/static_bad_unicode.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "lex",
+        "code": "PTN_LEX_INVALID_UNICODE_SCALAR"
+      }
+    },
+    {
+      "id": "list-element-assignment-rejected",
+      "source": "src/static_list_assignment.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "parse",
+        "code": "PTN_PARSE_UNEXPECTED_TOKEN"
+      }
+    },
+    {
+      "id": "active-binding-shadowing-rejected",
+      "source": "src/static_shadow.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "resolve",
+        "code": "PTN_RESOLVE_DUPLICATE_LOCAL"
+      }
+    },
+    {
+      "id": "non-exhaustive-option-match",
+      "source": "src/static_nonexhaustive.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_NONEXHAUSTIVE_MATCH"
+      }
+    },
+    {
+      "id": "unreachable-match-arm",
+      "source": "src/static_unreachable_arm.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_UNREACHABLE_MATCH_ARM"
+      }
+    },
+    {
+      "id": "reachable-path-missing-return",
+      "source": "src/static_missing_return.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_MISSING_RETURN"
+      }
+    },
+    {
+      "id": "ordering-requires-integers",
+      "source": "src/static_comparison_type.ptn",
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_MISMATCH"
+      }
+    },
+    {
+      "id": "unchecked-quota-postcondition-fails",
+      "source": "variants/quota_unchecked.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "4"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "postcondition"
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "fail"
+      }
+    },
+    {
+      "id": "unchecked-quota-zero-amount-postcondition-fails",
+      "source": "variants/quota_unchecked.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "0"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "postcondition"
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "fail"
+      }
+    },
+    {
+      "id": "reject-all-quota-postcondition-fails",
+      "source": "variants/quota_reject_all.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "args": [
+        "3",
+        "2"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "postcondition"
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "fail"
+      }
+    },
+    {
+      "id": "quota-contract-refuted",
+      "source": "variants/quota_unchecked.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "expected": {
+        "kind": "verification",
+        "claim": "postcondition",
+        "status": "refuted"
+      }
+    },
+    {
+      "id": "reject-all-contract-refuted",
+      "source": "variants/quota_reject_all.ptn",
+      "contracts": [
+        "contracts/quota.pact.ptn"
+      ],
+      "entry": "quota::reserve",
+      "expected": {
+        "kind": "verification",
+        "claim": "postcondition",
+        "status": "refuted"
+      }
+    },
+    {
+      "id": "runtime-precondition-fails",
+      "source": "src/contract_cases.ptn",
+      "contracts": [
+        "contracts/contract_cases.pact.ptn"
+      ],
+      "entry": "contract_cases::positive",
+      "args": [
+        "0"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "precondition"
+      },
+      "pacts": {
+        "precondition": "fail",
+        "postcondition": "not_reached"
+      }
+    },
+    {
+      "id": "contract-evaluation-traps",
+      "source": "src/contract_eval_trap.ptn",
+      "contracts": [
+        "contracts/contract_eval_trap.pact.ptn"
+      ],
+      "entry": "contract_eval_trap::run",
+      "args": [
+        "0"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "contract_evaluation",
+        "cause": "division_by_zero"
+      },
+      "pacts": {
+        "precondition": "trap",
+        "postcondition": "not_reached"
+      }
+    },
+    {
+      "id": "postcondition-evaluation-traps",
+      "source": "src/contract_cases.ptn",
+      "contracts": [
+        "contracts/contract_cases.pact.ptn"
+      ],
+      "entry": "contract_cases::post_trap",
+      "args": [
+        "0"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "contract_evaluation",
+        "cause": "division_by_zero"
+      },
+      "pacts": {
+        "precondition": "pass",
+        "postcondition": "trap"
+      }
+    },
+    {
+      "id": "contract-short-circuit-false-premise",
+      "source": "src/contract_short_circuit.ptn",
+      "contracts": [
+        "contracts/contract_short_circuit.pact.ptn"
+      ],
+      "entry": "contract_short_circuit::run",
+      "args": [
+        "0"
+      ],
+      "expected": {
+        "kind": "trap",
+        "category": "precondition"
+      },
+      "pacts": {
+        "precondition": "fail",
+        "postcondition": "not_reached"
+      }
+    },
+    {
+      "id": "contract-result-out-of-scope",
+      "source": "src/contract_scope.ptn",
+      "contracts": [
+        "contracts/contract_scope.pact.ptn"
+      ],
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "resolve",
+        "code": "PTN_RESOLVE_RESULT_OUTSIDE_POSTCONDITION"
+      }
+    },
+    {
+      "id": "contract-clause-must-be-bool",
+      "source": "src/contract_clause_type.ptn",
+      "contracts": [
+        "contracts/contract_clause_type.pact.ptn"
+      ],
+      "expected": {
+        "kind": "diagnostic",
+        "phase": "type",
+        "code": "PTN_TYPE_MISMATCH"
+      }
+    },
+    {
+      "id": "inconsistent-preconditions-rejected",
+      "source": "src/contract_inconsistent.ptn",
+      "contracts": [
+        "contracts/contract_inconsistent.pact.ptn"
+      ],
+      "entry": "contract_inconsistent::run",
+      "expected": {
+        "kind": "verification",
+        "claim": "precondition_consistency",
+        "status": "refuted"
+      }
+    },
+    {
+      "id": "loop-proof-unsupported",
+      "source": "src/verification_unsupported.ptn",
+      "entry": "verification_unsupported::count_down",
+      "expected": {
+        "kind": "verification",
+        "claim": "postcondition",
+        "status": "unsupported"
+      },
+      "contracts": [
+        "contracts/verification_unsupported.pact.ptn"
+      ]
+    },
+    {
+      "id": "identity-postcondition-proved",
+      "source": "src/verification_proved.ptn",
+      "contracts": [
+        "contracts/verification_proved.pact.ptn"
+      ],
+      "entry": "verification_proved::identity",
+      "expected": {
+        "kind": "verification",
+        "claim": "postcondition",
+        "status": "proved"
+      }
+    },
+    {
+      "id": "positive-postcondition-refuted",
+      "source": "src/verification_refuted.ptn",
+      "contracts": [
+        "contracts/verification_refuted.pact.ptn"
+      ],
+      "entry": "verification_refuted::positive",
+      "expected": {
+        "kind": "verification",
+        "claim": "postcondition",
+        "status": "refuted"
+      }
+    }
+  ]
+}

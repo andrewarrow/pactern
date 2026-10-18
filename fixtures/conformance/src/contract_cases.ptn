@@ -1,0 +1,9 @@
+module contract_cases;
+pub fn positive(value: I64) -> I64 { return value; }
+pub fn guarded_division(divisor: I64) -> I64 { return 1 / divisor; }
+pub fn post_trap(value: I64) -> I64 { return value; }
+pub fn loop_sum(value: I64) -> I64 {
+    let mut count = value;
+    while (count > 0) { count = count - 1; }
+    return count;
+}

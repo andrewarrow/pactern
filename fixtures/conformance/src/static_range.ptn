@@ -1,0 +1,2 @@
+module static_range;
+pub fn run() -> I64 { return 9223372036854775808; }

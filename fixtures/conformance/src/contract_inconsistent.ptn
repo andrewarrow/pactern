@@ -1,0 +1,2 @@
+module contract_inconsistent;
+pub fn run(value: I64) -> I64 { return value; }

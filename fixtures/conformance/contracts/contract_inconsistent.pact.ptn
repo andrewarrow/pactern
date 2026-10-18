@@ -1,0 +1,2 @@
+module contract_inconsistent;
+pact impossible for run { requires value > 0; requires value < 0; ensures result == value; }

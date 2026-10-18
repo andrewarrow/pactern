@@ -1,0 +1,2 @@
+module static_leading_zero;
+pub fn run() -> I64 { return 01; }

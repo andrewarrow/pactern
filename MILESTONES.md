@@ -29,6 +29,16 @@ verification, or semantic-edit implementation is claimed.
 
 ### 3. Seed conformance fixtures and baseline tasks
 
+**Status:** Complete. The [conformance corpus](fixtures/conformance/README.md)
+records 79 cases covering values, diagnostics, traps, pact guards, and separate
+verification expectations. The Rust baseline harness validates the corpus and
+checks 25 selected execution cases against independent Go/Rust programs for quota
+reservation and two transformations. The [baseline guide](baselines/README.md)
+documents reproduction and the checked-in initial measurements of build time,
+process/batch time, and artifact size. Agent/token costs remain unmeasured; these
+public seed tasks are not a held-out agent evaluation. No Pactern execution or
+verification is claimed.
+
 **Languages/formats:** Pactern fixtures; Rust baseline harness; Go and Rust comparison programs; JSON task data. **Done when:** fixture inputs have recorded expected values, diagnostics, traps, and pact outcomes, and the Rust harness reproduces Go/Rust baseline results and costs before Pactern execution exists.
 
 ## Build the language path

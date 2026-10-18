@@ -1,0 +1,2 @@
+module verification_proved;
+pub fn identity(value: I64) -> I64 { return value; }

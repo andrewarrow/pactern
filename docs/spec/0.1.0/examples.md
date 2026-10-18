@@ -2,8 +2,10 @@
 
 These are normative examples for [language version 0.1.0](language.md), not output
 from an existing compiler. Module fragments are illustrative source; tables give
-the expected outcomes for future conformance fixtures. The full automated corpus
-belongs to milestone 3.
+the expected outcomes for conformance fixtures. The milestone 3
+[seed corpus](../../../fixtures/conformance/README.md) records machine-readable
+expectations; its Rust harness validates metadata and runs Go/Rust comparisons,
+without executing Pactern.
 
 ## Checked integers and evaluation order
 

@@ -1,0 +1,2 @@
+module contract_eval_trap;
+pact division_in_precondition for run { requires 1 / divisor > 0; }

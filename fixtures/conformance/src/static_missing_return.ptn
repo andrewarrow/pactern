@@ -1,0 +1,2 @@
+module static_missing_return;
+pub fn run(value: Bool) -> I64 { if (value) { return 1; } }

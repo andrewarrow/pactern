@@ -16,9 +16,10 @@ You define the behavior and permissions. The agent proposes an implementation.
 The compiler, acceptance tools, and runtime are designed to check that the change
 respects the agreement—and return useful evidence when it doesn't.
 
-**Early development:** the specification, Rust library, and installable CLI
-skeleton are available. Compilation, verification, execution, and semantic edits
-remain to be implemented. The examples and workflow below describe the design.
+**Early development:** the specification, Rust library, installable CLI skeleton,
+conformance fixtures, and Go/Rust baseline harness are available. Pactern
+compilation, verification, execution, and semantic edits remain to be implemented.
+The examples and workflow below describe the design.
 
 ## Why write the rules twice?
 
@@ -219,8 +220,10 @@ such as `check`, `verify`, `test`, `build`, and `apply` currently return explici
 not-implemented errors. They do not process or modify a Pactern project.
 
 If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): conformance fixtures and reproducible
-baseline tasks. Concrete edge cases, small failing programs, and challenges to
+[implementation milestone](MILESTONES.md): source spans, lexer, and parser.
+The [conformance corpus](fixtures/conformance/README.md) and
+[Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
+reproducible measurements. Concrete edge cases, small failing programs, and challenges to
 the specification are useful contributions alongside compiler work.
 
 - [Language specification](docs/spec/0.1.0/README.md): semantics, grammar, and protocol contracts.

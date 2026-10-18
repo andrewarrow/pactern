@@ -1,0 +1,2 @@
+module static_immutable;
+pub fn run() -> I64 { let count = 1; count = 2; return count; }

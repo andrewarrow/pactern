@@ -1,0 +1,16 @@
+module quota;
+
+pub enum ReserveError {
+    InvalidAmount,
+    InsufficientQuota,
+}
+
+pub fn reserve(available: I64, amount: I64) -> Result<I64, ReserveError> {
+    if (amount <= 0) {
+        return Result::Err(ReserveError::InvalidAmount);
+    }
+    if (amount > available) {
+        return Result::Err(ReserveError::InsufficientQuota);
+    }
+    return Result::Ok(available - amount);
+}

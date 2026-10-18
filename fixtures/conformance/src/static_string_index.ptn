@@ -1,0 +1,2 @@
+module static_string_index;
+pub fn run() -> String { return "é"[0]; }

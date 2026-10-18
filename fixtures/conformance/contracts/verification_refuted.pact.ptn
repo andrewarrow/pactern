@@ -1,0 +1,2 @@
+module verification_refuted;
+pact claimed_positive for positive { requires value >= 0; ensures result > 0; }

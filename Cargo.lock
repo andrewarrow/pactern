@@ -137,6 +137,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pactern-baseline"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pactern-cli"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,54 @@
+{
+  "format_version": "0.1.0",
+  "tasks": [
+    {
+      "id": "quota",
+      "description": "Reserve positive amounts within available quota; runtime guards check a nonnegative starting balance and each normal result.",
+      "source": "src/quota.ptn",
+      "entry": "quota::reserve",
+      "case_ids": [
+        "quota-success",
+        "quota-invalid-amount",
+        "quota-invalid-negative-amount",
+        "quota-insufficient",
+        "quota-zero-available",
+        "quota-maximum",
+        "quota-exact-exhaustion",
+        "quota-minimum-amount-is-rejected",
+        "quota-maximum-exact-exhaustion",
+        "quota-precondition-fails"
+      ]
+    },
+    {
+      "id": "pair_totals",
+      "description": "Sum the first two adjacent pairs of a list, preserving checked arithmetic and access order; ignore later elements.",
+      "source": "src/pair_totals.ptn",
+      "entry": "pair_totals::pair_totals",
+      "case_ids": [
+        "pair-totals-normal",
+        "pair-totals-negative",
+        "pair-totals-short-list",
+        "pair-totals-empty-list",
+        "pair-totals-overflow-left-first",
+        "pair-first-overflow-precedes-second-pair-bounds",
+        "pair-second-overflow",
+        "pair-extra-elements-ignored"
+      ]
+    },
+    {
+      "id": "summarize",
+      "description": "Preserve a UTF-8 label and summarize used plus reserved capacity as total and active status.",
+      "source": "src/summarize.ptn",
+      "entry": "summarize::summarize",
+      "case_ids": [
+        "summary-positive",
+        "summary-zero",
+        "summary-empty-label",
+        "summary-unicode",
+        "summary-long-label-preserved",
+        "summary-overflow",
+        "summary-negative-overflow"
+      ]
+    }
+  ]
+}

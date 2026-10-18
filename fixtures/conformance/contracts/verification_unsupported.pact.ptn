@@ -1,0 +1,2 @@
+module verification_unsupported;
+pact countdown_result for count_down { ensures result <= value; }

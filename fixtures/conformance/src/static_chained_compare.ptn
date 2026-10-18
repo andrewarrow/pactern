@@ -1,0 +1,2 @@
+module static_chained_compare;
+pub fn run() -> Bool { return 1 < 2 < 3; }

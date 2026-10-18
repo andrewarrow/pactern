@@ -1,0 +1,2 @@
+module contract_scope;
+pact invalid_scope for run { requires result == 0; }

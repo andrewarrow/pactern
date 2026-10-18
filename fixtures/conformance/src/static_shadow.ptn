@@ -1,0 +1,2 @@
+module static_shadow;
+pub fn run() -> I64 { let x = 1; if (true) { let x = 2; } return x; }

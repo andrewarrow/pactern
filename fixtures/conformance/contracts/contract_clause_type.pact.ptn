@@ -1,0 +1,2 @@
+module contract_clause_type;
+pact invalid_clause for run { requires 1; }

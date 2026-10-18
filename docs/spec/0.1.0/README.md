@@ -53,5 +53,6 @@ fixtures should cite the relevant rule and expected outcome.
 Validation for this milestone checks the EBNF's internal structure, JSON Schema
 definitions and example payloads, Markdown links, and cross-document consistency.
 There is no Pactern parser yet, so source examples have been reviewed against the
-grammar rather than executed. Milestones 2 and 3 establish the Rust workspace and
-executable conformance/baseline harness respectively.
+grammar rather than executed. Milestones 2 and 3 now provide the Rust workspace
+and [conformance/baseline harness](../../../baselines/README.md) respectively;
+the harness executes conventional Go/Rust comparisons, not Pactern source.

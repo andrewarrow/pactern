@@ -1,0 +1,2 @@
+module contract_short_circuit;
+pact guarded_expression for run { requires divisor != 0 && 1 / divisor > 0; ensures result == divisor; }

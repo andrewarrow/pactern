@@ -1,0 +1,13 @@
+module quota;
+
+pact reserve_safety for reserve {
+    requires available >= 0;
+    ensures match (result) {
+        Result::Ok(remaining) =>
+            amount > 0 && amount <= available &&
+            remaining == available - amount && remaining >= 0,
+        Result::Err(ReserveError::InvalidAmount) => amount <= 0,
+        Result::Err(ReserveError::InsufficientQuota) =>
+            amount > 0 && amount > available,
+    };
+}

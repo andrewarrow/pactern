@@ -1,0 +1,5 @@
+module pair_totals;
+
+pub fn pair_totals(values: List<I64>) -> List<I64> {
+    return [values[0] + values[1], values[2] + values[3]];
+}

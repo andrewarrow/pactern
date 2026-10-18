@@ -1,0 +1,44 @@
+module integers;
+
+pub fn max_value() -> I64 { return 9223372036854775807; }
+pub fn min_value() -> I64 { return -9223372036854775808; }
+pub fn add_max_one() -> I64 { return 9223372036854775807 + 1; }
+pub fn negate_min() -> I64 { return -(-9223372036854775808); }
+pub fn divide_negative() -> I64 { return -7 / 3; }
+pub fn remainder_negative() -> I64 { return -7 % 3; }
+pub fn divide_zero() -> I64 { return 1 / 0; }
+pub fn remainder_zero() -> I64 { return 1 % 0; }
+pub fn divide_min_negative_one() -> I64 { return -9223372036854775808 / -1; }
+pub fn remainder_min_negative_one() -> I64 { return -9223372036854775808 % -1; }
+pub fn short_and() -> Bool { return false && (1 / 0 == 0); }
+pub fn short_or() -> Bool { return true || (1 / 0 == 0); }
+pub fn argument_order() -> I64 {
+    return first(1 / 0, 9223372036854775807 + 1);
+}
+pub fn operand_order() -> I64 {
+    return (1 / 0) + (9223372036854775807 + 1);
+}
+pub fn list_element_order() -> I64 {
+    let values: List<I64> = [1 / 0, 9223372036854775807 + 1];
+    return values[0];
+}
+struct OrderedFields { first: I64, second: I64 }
+pub fn record_field_order() -> I64 {
+    let value = OrderedFields {
+        first: 1 / 0,
+        second: 9223372036854775807 + 1,
+    };
+    return value.first;
+}
+fn first(a: I64, b: I64) -> I64 { return a; }
+pub fn string_equal() -> Bool { return "a" == "\u{61}"; }
+pub fn string_escape() -> String { return "line\nquote: \""; }
+pub fn list_item(index: I64) -> I64 { let values: List<I64> = [10, 20]; return values[index]; }
+pub fn empty_length_value() -> I64 { let values: List<I64> = []; return 0; }
+pub fn mutable_value() -> I64 { let mut count = 1; count = 2; return count; }
+pub fn match_option(value: Option<I64>) -> I64 {
+    return match (value) {
+        Option::Some(number) => number,
+        Option::None => 0,
+    };
+}

@@ -1,0 +1,2 @@
+module contract_short_circuit;
+pub fn run(divisor: I64) -> I64 { return divisor; }

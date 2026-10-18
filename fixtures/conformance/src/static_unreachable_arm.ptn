@@ -1,0 +1,4 @@
+module static_unreachable_arm;
+pub fn run(value: Option<I64>) -> I64 {
+    return match (value) { _ => 0, Option::None => 1 };
+}

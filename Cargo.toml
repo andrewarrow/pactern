@@ -1,6 +1,6 @@
 [workspace]
-members = ["crates/pactern", "crates/pactern-cli"]
-default-members = ["crates/pactern", "crates/pactern-cli"]
+members = ["crates/pactern", "crates/pactern-cli", "crates/pactern-baseline"]
+default-members = ["crates/pactern", "crates/pactern-cli", "crates/pactern-baseline"]
 resolver = "3"
 
 [workspace.package]

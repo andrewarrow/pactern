@@ -1,0 +1,7 @@
+module contract_cases;
+pact positive_only for positive { requires value > 0; ensures result == value; }
+pact safe_division for guarded_division {
+    requires divisor != 0 && 1 / divisor > 0;
+    ensures result > 0;
+}
+pact post_evaluation_trap for post_trap { ensures result == 1 / value; }

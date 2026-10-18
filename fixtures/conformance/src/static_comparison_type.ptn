@@ -1,0 +1,2 @@
+module static_comparison_type;
+pub fn run() -> Bool { return true < false; }

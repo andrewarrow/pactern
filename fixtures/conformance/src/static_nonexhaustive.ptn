@@ -1,0 +1,4 @@
+module static_nonexhaustive;
+pub fn run(value: Option<I64>) -> I64 {
+    return match (value) { Option::Some(number) => number };
+}

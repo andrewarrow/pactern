@@ -1,0 +1,13 @@
+module summarize;
+
+pub struct Summary {
+    label: String,
+    total: I64,
+    active: Bool,
+}
+
+pub fn summarize(label: String, used: I64, reserved: I64) -> Summary {
+    let total = used + reserved;
+    let active = total > 0;
+    return Summary { label: label, total: total, active: active };
+}

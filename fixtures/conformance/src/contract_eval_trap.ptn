@@ -1,0 +1,2 @@
+module contract_eval_trap;
+pub fn run(divisor: I64) -> I64 { return divisor; }

@@ -1,0 +1,2 @@
+module static_type_reassignment;
+pub fn run() -> I64 { let mut count = 1; count = true; return count; }

@@ -1,0 +1,6 @@
+module verification_unsupported;
+pub fn count_down(value: I64) -> I64 {
+    let mut count = value;
+    while (count > 0) { count = count - 1; }
+    return count;
+}

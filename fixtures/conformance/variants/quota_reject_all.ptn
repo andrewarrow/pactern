@@ -1,0 +1,6 @@
+module quota;
+
+pub enum ReserveError { InvalidAmount, InsufficientQuota }
+pub fn reserve(available: I64, amount: I64) -> Result<I64, ReserveError> {
+    return Result::Err(ReserveError::InvalidAmount);
+}

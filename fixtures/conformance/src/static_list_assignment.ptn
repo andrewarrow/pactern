@@ -1,0 +1,2 @@
+module static_list_assignment;
+pub fn run() -> List<I64> { let mut values: List<I64> = [1, 2]; values[0] = 3; return values; }
