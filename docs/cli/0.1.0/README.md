@@ -28,6 +28,10 @@ Global flags work before the `--` terminator:
 - `--store PATH` selects an atomic managed workspace.
 - `--baseline PATH` selects the trusted owner's external acceptance baseline.
 
+`version --json` also includes `git_sha`, the full Git commit SHA embedded at build
+time. It is `null` when revision metadata is unavailable. Builds from source
+archives can set `PACTERN_GIT_SHA` to supply the commit SHA.
+
 Existing [version](version.schema.json), [help](help.schema.json), and
 [source success](source.schema.json) schemas remain valid. Runtime/proof/test/build
 reports are experimental; do not treat local numeric compiler IDs as persistent

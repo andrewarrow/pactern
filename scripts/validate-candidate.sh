@@ -3,6 +3,8 @@
 set -eu
 candidate_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$candidate_root"
+PACTERN_GIT_SHA=${PACTERN_GIT_SHA:-$(git rev-parse --verify HEAD 2>/dev/null || true)}
+export PACTERN_GIT_SHA
 release_scratch=$(mktemp -d "${TMPDIR:-/tmp}/pactern-candidate.XXXXXX")
 trap 'rm -rf "$release_scratch"' EXIT HUP INT TERM
 mkdir -p "$release_scratch/source"
@@ -24,12 +26,13 @@ cargo install --locked --path crates/pactern-cli --root "$release_scratch/instal
 candidate_bin="$release_scratch/install/bin/pactern"
 "$candidate_bin" --json version > "$release_scratch/version.json"
 python3 - "$release_scratch/version.json" <<'PY'
-import json, sys, tomllib
+import json, os, sys, tomllib
 with open(sys.argv[1]) as f:
     version = json.load(f)
 with open('Cargo.toml', 'rb') as f:
     expected = tomllib.load(f)['workspace']['package']['version']
 assert version['tool_version'] == expected, version
+assert version['git_sha'] == (os.environ['PACTERN_GIT_SHA'] or None), version
 assert version['cli_version'] == version['language_version'] == version['protocol_version'] == expected, version
 PY
 # These commands are the runnable examples in docs/candidate.md.

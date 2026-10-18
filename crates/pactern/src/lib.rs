@@ -37,6 +37,12 @@ pub mod verification;
 pub mod workspace;
 
 pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Build-time commit SHA, or `None` when built without revision metadata.
+pub const GIT_SHA: Option<&str> = if env!("PACTERN_BUILD_GIT_SHA").is_empty() {
+    None
+} else {
+    Some(env!("PACTERN_BUILD_GIT_SHA"))
+};
 pub const CLI_VERSION: &str = "0.1.0";
 /// Target specification version; this is not a claim of language conformance.
 pub const LANGUAGE_VERSION: &str = "0.1.0";
@@ -83,6 +89,7 @@ pub struct VersionInfo {
     pub kind: &'static str,
     pub cli_version: &'static str,
     pub tool_version: &'static str,
+    pub git_sha: Option<&'static str>,
     pub language_version: &'static str,
     pub protocol_version: &'static str,
 }
@@ -92,6 +99,7 @@ pub fn version_info() -> VersionInfo {
         kind: "version",
         cli_version: CLI_VERSION,
         tool_version: TOOL_VERSION,
+        git_sha: GIT_SHA,
         language_version: LANGUAGE_VERSION,
         protocol_version: PROTOCOL_VERSION,
     }
@@ -256,6 +264,7 @@ mod tests {
 
         assert_eq!(value["kind"], "version");
         assert_eq!(value["tool_version"], TOOL_VERSION);
+        assert_eq!(value["git_sha"], serde_json::json!(GIT_SHA));
         assert_eq!(value["cli_version"], CLI_VERSION);
         assert_eq!(value["language_version"], LANGUAGE_VERSION);
         assert_eq!(value["protocol_version"], PROTOCOL_VERSION);

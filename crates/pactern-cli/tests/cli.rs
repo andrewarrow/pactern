@@ -86,9 +86,37 @@ fn version_aliases_return_version_envelope() {
         assert_eq!(value["kind"], "version");
         assert_eq!(value["cli_version"], "0.1.0");
         assert_eq!(value["tool_version"], "0.1.0");
+        assert_eq!(value["git_sha"], serde_json::json!(pactern::GIT_SHA));
         assert_eq!(value["language_version"], "0.1.0");
         assert_eq!(value["protocol_version"], "0.1.0");
     }
+}
+
+#[test]
+fn version_reports_build_revision_outside_a_checkout_without_git() {
+    let directory = TempDir::new();
+    let output = Command::new(CLI)
+        .args(["version", "--json"])
+        .current_dir(&directory.0)
+        .env("PATH", "")
+        .output()
+        .expect("run pactern without git");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let expected = std::env::var("PACTERN_GIT_SHA").ok().or_else(|| {
+        let output = Command::new("git")
+            .args(["rev-parse", "--verify", "HEAD"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .output()
+            .ok()?;
+        output
+            .status
+            .success()
+            .then(|| String::from_utf8(output.stdout).unwrap().trim().to_owned())
+    });
+    let expected = expected.filter(|sha| !sha.is_empty());
+    assert_eq!(value["git_sha"], serde_json::json!(expected));
 }
 
 #[test]
