@@ -7,7 +7,7 @@ this toolchain automatically.
 The workspace contains three crates:
 
 - `crates/pactern` is the shared Rust library for versioned tool and protocol
-  types and the syntax-only source, lexer, and parser APIs.
+  types, syntax APIs, and module/name resolution.
 - `crates/pactern-cli` is the `pactern` binary. It adapts command-line
   arguments and terminal output to the shared library.
 - `crates/pactern-baseline` validates recorded conformance fixtures and runs
@@ -39,8 +39,10 @@ cargo run -p pactern-cli -- version --json
 ```
 
 The CLI's version and help output work. Its project commands remain scaffolded
-and return a not-implemented diagnostic. The library parser accepts implementation
-and contract source files, but it does not resolve names or check types.
+and return a not-implemented diagnostic. The library parses implementation and
+contract source files and resolves parsed files together as a project. Resolution
+uses package-relative module paths and returns symbol/reference indexes and
+located diagnostics; it does not check types.
 
 Use the syntax API directly when testing grammar behavior:
 
@@ -58,6 +60,35 @@ fn main() -> Result<(), pactern::syntax::SyntaxDiagnostic> {
 }
 ```
 
+Resolve parsed files together to build a package-local symbol and reference
+index:
+
+```rust
+use pactern::resolution::{resolve, ParsedFile};
+use pactern::syntax::{parse, FileKind, SourceFile};
+
+fn main() -> Result<(), pactern::syntax::SyntaxDiagnostic> {
+    let path = "src/example.ptn";
+    let source = SourceFile::new(
+        path,
+        "module example; pub fn answer() -> I64 { return 42; }",
+    );
+    let tree = parse(&source, FileKind::Implementation)?;
+    let project = resolve(&[ParsedFile::new(path, tree)]);
+    assert!(project.is_success());
+    Ok(())
+}
+```
+
+Pass every implementation and contract file in the closed project using its
+package-relative path (for example, `src/util/math.ptn` or
+`contracts/util/math.pact.ptn`). Resolution performs no filesystem or network
+access. Its file, module, and symbol IDs belong to one result and are not
+persistent identities. Diagnostics and references include a file ID because
+syntax spans are local to one source file. Field accesses and effect labels are
+recorded for later phases; resolution does not check types, effects, generic
+recursion, handles, or host registries.
+
 Syntax spans use zero-based UTF-8 byte offsets and one-based line and Unicode
 scalar columns. LF, CRLF, and lone CR each count as one newline. Spans are local
 to the `SourceFile` that produced them. `SyntaxDiagnostic` reports the first
@@ -67,10 +98,11 @@ diagnostic envelope used for later project operations. The lexer accepts at most
 expression depth are limited to 64.
 
 The [conformance corpus](../fixtures/conformance/README.md) records expected
-Pactern outcomes; workspace tests parse every corpus source and exercise the
-conventional Rust comparison program, but do not execute Pactern programs.
-With Go on `PATH`, run both baselines and record their build/execution costs
-with:
+Pactern outcomes. Workspace tests check syntax outcomes and resolver-phase
+diagnostics by staging each fixture's selected files at their declared module
+paths; they also exercise the conventional Rust comparison program. They do
+not run Pactern programs or check type, runtime, or verification outcomes. With
+Go on `PATH`, run both baselines and record their build/execution costs with:
 
 ```sh
 go test ./baselines/go/main.go ./baselines/go/main_test.go

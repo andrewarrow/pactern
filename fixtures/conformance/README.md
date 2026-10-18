@@ -1,6 +1,6 @@
 # Pactern 0.1.0 conformance corpus
 
-This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. The syntax-only library parses every source file here and checks the recorded syntax and parse outcomes. Runtime, pact execution, and verification expectations remain fixture contracts for future implementations; no Pactern program has been executed.
+This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. The library parses fixture sources and checks recorded syntax outcomes. The module/name resolver checks module-resolution and contract-scope diagnostics for staged project files. Runtime, pact execution, type checking, and verification expectations remain fixture contracts for future implementations; no Pactern program has been executed.
 
 `manifest.json` is the machine-readable index. Each case has a stable ID, a source path, an expected outcome, and, when relevant, an entry point, arguments, protected contracts, or pact phase statuses. `I64` arguments and results use canonical decimal JSON strings. Strings remain JSON strings, and lists and records use JSON arrays and objects. `Result` values use a `tag` plus their payload or error name. Static diagnostics use stable `PTN_*` identifiers; where the protocol registry does not yet define a language diagnostic, this corpus assigns a descriptive code for the specified condition.
 
@@ -18,12 +18,13 @@ The current manifest contains 79 expected cases. The `pacts` values describe run
 | Proved/refuted consistency or postconditions and unsupported loops | [Language §9](../../docs/spec/0.1.0/language.md#9-initial-verification-boundary) |
 
 Each case selects exactly one implementation file plus its listed contract
-files. A future compiler adapter must stage these files using their declared
-module paths, rather than compile the whole corpus as one package. In particular,
-quota variants replace `src/quota.ptn`; they are never loaded beside it. Static
-diagnostic cases expect the specified code and phase without pinning message
-wording. Syntax errors include local UTF-8 byte and line/scalar-column spans;
-later semantic and protocol diagnostics are not implemented yet.
+files. Stage these files using their declared module paths before calling the
+resolver; do not load the whole corpus as one package. In particular, quota
+variants replace `src/quota.ptn`; they are never loaded beside it. Resolver
+conformance checks the expected resolution-phase codes. Resolver diagnostics
+carry file-aware source locations, while message wording is not pinned. Syntax
+errors include local UTF-8 byte and line/scalar-column spans. Type-checking,
+runtime, and verification outcomes are not exercised yet.
 
 `args` is an array of values, not source expressions: `List<I64>` uses arrays of
 decimal strings, string arguments contain their decoded text, and `Option`
@@ -34,10 +35,10 @@ outcomes contain a phase/code, and `verification` outcomes contain a distinct
 claim/status. Missing pact clause phases impose `true` as specified. A phase
 that cannot run is `not_reached`.
 
-Run `cargo test --workspace --locked` to parse all corpus sources, validate the
-recorded syntax outcomes, and run the Rust seed comparison. These checks do not
-execute the Pactern programs or verify their runtime and proof expectations. See
-the [baseline guide](../../baselines/README.md) to run both comparison languages
-and record costs. The suite is a seed, not exhaustive coverage: module resolution,
-generic/effect/handle checks, host limits, solver timeouts, and other cases will
-grow with their implementation milestones.
+Run `cargo test --workspace --locked` to parse the corpus sources, validate the
+recorded syntax outcomes, exercise implemented resolver cases, and run the Rust
+seed comparison. These checks do not execute Pactern programs or verify their
+runtime and proof expectations. See the [baseline guide](../../baselines/README.md)
+to run both comparison languages and record costs. The suite is a seed, not
+exhaustive coverage: type, generic, effect/handle, host-limit, solver-timeout,
+and other cases will grow with their implementation milestones.

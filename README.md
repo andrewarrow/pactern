@@ -16,11 +16,11 @@ You define the behavior and permissions. The agent proposes an implementation.
 The compiler, acceptance tools, and runtime are designed to check that the change
 respects the agreement—and return useful evidence when it doesn't.
 
-**Early development:** the specification, Rust library with a syntax-only lexer
-and parser, installable CLI skeleton, conformance fixtures, and Go/Rust baseline
-harness are available. Name resolution, type checking, Pactern compilation,
-verification, execution, and semantic edits remain to be implemented. The
-examples and workflow below describe the design.
+**Early development:** the specification, Rust library with a lexer, parser, and
+module/name resolver, installable CLI skeleton, conformance fixtures, and Go/Rust
+baseline harness are available. Type checking, Pactern compilation, verification,
+execution, and semantic edits remain to be implemented. The examples and
+workflow below describe the design.
 
 ## Why write the rules twice?
 
@@ -177,7 +177,9 @@ what passed and what remains unestablished.
 
 The compiler and verifier need to agree on what a program means. So do the
 semantic editor and runtime. Pactern puts those responsibilities around one
-small language and a shared typed representation.
+small language and a shared representation. The current resolver builds
+file-aware symbol and reference indexes; type checking and the typed
+representation remain planned work.
 
 For example, `I64` arithmetic is specified to trap on overflow in every build
 mode. The interpreter, generated code, and prover must all preserve that rule.
@@ -217,14 +219,15 @@ cargo install --path crates/pactern-cli --locked
 pactern version --json
 ```
 
-Help, version metadata, structured tool diagnostics, and the library syntax API
-work today. The library parser accepts implementation and contract files and
-returns syntax trees or bounded, located syntax diagnostics. CLI commands such
-as `check`, `verify`, `test`, `build`, and `apply` still return explicit
-not-implemented errors; they do not process or modify a Pactern project.
+Help, version metadata, structured tool diagnostics, and the library syntax and
+resolution APIs work today. The resolver accepts parsed project files with
+package-relative module paths and returns file-aware declarations, references,
+and diagnostics. CLI commands such as `check`, `verify`, `test`, `build`, and
+`apply` still return explicit not-implemented errors; they do not process or
+modify a Pactern project.
 
 If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): resolving modules and names.
+[implementation milestone](MILESTONES.md): type-checking the core language.
 The [conformance corpus](fixtures/conformance/README.md) and
 [Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
 reproducible measurements. Concrete edge cases, small failing programs, and challenges to

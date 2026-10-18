@@ -45,11 +45,13 @@ verification is claimed.
 
 ### 4. Implement source spans, lexer, and parser
 
-**Status:** Complete for syntax. The `pactern` library exposes a source file, lexer, and parser for implementation and contract files. Valid corpus inputs produce syntax trees with UTF-8 byte offsets and line/scalar-column spans; malformed fixtures and deterministic mutation, random-input, and truncation smoke cases return first-error located diagnostics without panicking. The lexer caps source files at 1 MiB and emitted tokens at 100,000 including EOF; parser nesting and expression depth are capped at 64. These are syntax-only local diagnostics, not protocol envelopes. Name resolution, typing, execution, and verification remain future work.
+**Status:** Complete for syntax. The `pactern` library exposes a source file, lexer, and parser for implementation and contract files. Valid corpus inputs produce syntax trees with UTF-8 byte offsets and line/scalar-column spans; malformed fixtures and deterministic mutation, random-input, and truncation smoke cases return first-error located diagnostics without panicking. The lexer caps source files at 1 MiB and emitted tokens at 100,000 including EOF; parser nesting and expression depth are capped at 64. These are syntax-only local diagnostics, not protocol envelopes. Typing, execution, and verification remain future work.
 
 **Languages/formats:** Rust; Pactern source and EBNF grammar. **Done when:** valid fixture programs produce syntax trees with byte and line/column spans, while malformed and fuzz-generated input returns bounded, located diagnostics without crashing.
 
 ### 5. Resolve modules and names
+
+**Status:** Complete. `pactern::resolution::resolve` accepts parsed files identified by package-relative paths and returns file, module, and symbol indexes, file-aware references, deferred uses, and diagnostics with related declaration locations. It resolves file-scoped qualified imports, visibility, duplicates and shadowing, unresolved names, dependency cycles across implementation and contract files, constructor and generic-parameter names, and pact target/parameter/result scopes. The 24 resolver tests and staged conformance cases pass with `cargo test --workspace --locked`; workspace formatting and Clippy checks pass. IDs belong to one resolution result, and resolution performs no filesystem or network access. Field accesses and effect labels are deferred; type/effect checking, generic recursion, handles, and host limits remain later work.
 
 **Languages/formats:** Rust; Pactern modules. **Done when:** imports, visibility, shadowing, duplicate names, and unresolved names match fixtures and diagnostics point to the relevant declarations and uses.
 
