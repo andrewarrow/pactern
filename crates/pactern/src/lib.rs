@@ -1,8 +1,9 @@
 //! Shared entry points for the Pactern toolchain.
 //!
-//! Metadata, syntax, package name resolution, core value typing, typed IR, and pure interpretation APIs are available.
-//! Project commands remain
-//! unavailable until the semantic language path is implemented.
+//! Metadata, syntax, formatting, source-bound diagnostics, name resolution,
+//! core value typing, typed IR, and pure interpretation APIs are available.
+//! The CLI checks and formats source-only packages; other project commands
+//! remain unavailable.
 //!
 //! ```
 //! use pactern::{execute, Command, PROTOCOL_VERSION};
@@ -18,6 +19,8 @@ use std::path::PathBuf;
 use serde::Serialize;
 
 pub mod core;
+pub mod formatting;
+pub mod frontend;
 pub mod interpreter;
 pub mod resolution;
 pub mod syntax;
@@ -92,6 +95,34 @@ pub struct Diagnostic {
     severity: &'static str,
     phase: &'static str,
     message: String,
+    #[serde(flatten)]
+    details: Box<DiagnosticDetails>,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct DiagnosticDetails {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_revision: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    span: Option<DiagnosticSpan>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    related: Vec<RelatedDiagnostic>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notes: Vec<String>,
+}
+
+/// A half-open UTF-8 byte range in a revision's workspace-relative file.
+#[derive(Clone, Debug, Serialize)]
+pub struct DiagnosticSpan {
+    pub path: String,
+    pub start_byte: usize,
+    pub end_byte: usize,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RelatedDiagnostic {
+    pub message: String,
+    pub span: DiagnosticSpan,
 }
 
 impl Diagnostic {
@@ -119,12 +150,35 @@ impl Diagnostic {
         Self::new("PTN_TOOL_IO", message)
     }
 
+    pub fn no_sources() -> Self {
+        Self::new(
+            "PTN_TOOL_NO_SOURCES",
+            "No .ptn source files found; select files or directories, or add sources under src or contracts.",
+        )
+    }
+
+    pub fn source_limit(message: impl Into<String>) -> Self {
+        Self::new("PTN_TOOL_SOURCE_LIMIT", message)
+    }
+
     pub fn code(&self) -> &str {
         self.code
     }
 
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    pub fn span(&self) -> Option<&DiagnosticSpan> {
+        self.details.span.as_ref()
+    }
+
+    pub fn related(&self) -> &[RelatedDiagnostic] {
+        &self.details.related
+    }
+
+    pub fn notes(&self) -> &[String] {
+        &self.details.notes
     }
 
     fn new(code: &'static str, message: impl Into<String>) -> Self {
@@ -135,6 +189,7 @@ impl Diagnostic {
             severity: "error",
             phase: "tool",
             message: message.into(),
+            details: Box::default(),
         }
     }
 }
@@ -157,7 +212,8 @@ pub fn validate_protocol_version(requested: &str) -> Result<(), Diagnostic> {
 
 /// Dispatch a command against an exact protocol version without filesystem I/O.
 ///
-/// Only metadata is available until later milestones implement the language path.
+/// This metadata-only dispatcher remains free of I/O. The CLI adapts source
+/// checking and formatting through [`frontend`] and [`formatting`] separately.
 pub fn execute(command: &Command, protocol_version: &str) -> Result<VersionInfo, Diagnostic> {
     validate_protocol_version(protocol_version)?;
 

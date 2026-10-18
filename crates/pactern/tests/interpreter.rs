@@ -339,3 +339,29 @@ fn aggregate_arguments_and_explicit_limits() {
     );
     assert_eq!(run("enum Chain {End, Next(Chain)} fn run()->Unit {let mut x=Chain::End;while (true) {x=Chain::Next(x);}}").unwrap_err().kind,TrapKind::ExecutionLimit);
 }
+
+#[test]
+fn match_binding_copies_consume_fuel() {
+    let p = program(
+        "src/main.ptn",
+        "module main;
+        fn bound(x:String)->I64 {return match (x) {copy=>0};}
+        fn wildcard(x:String)->I64 {return match (x) {_=>0};}",
+    );
+    let limits = Limits {
+        fuel: 80,
+        ..Limits::default()
+    };
+    let args = vec![Value::String("x".repeat(32))];
+    assert_eq!(
+        interpreter::execute(&p, id(&p, "wildcard"), args.clone(), limits).unwrap(),
+        Value::I64(0)
+    );
+    let trap = interpreter::execute(&p, id(&p, "bound"), args.clone(), limits).unwrap_err();
+    assert_eq!(trap.kind, TrapKind::ExecutionLimit);
+    assert!(trap.origin.is_some());
+    assert_eq!(
+        interpreter::execute(&p, id(&p, "bound"), args, Limits::default()).unwrap(),
+        Value::I64(0)
+    );
+}

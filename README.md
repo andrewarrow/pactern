@@ -16,11 +16,12 @@ You define the behavior and permissions. The agent proposes an implementation.
 The compiler, acceptance tools, and runtime are designed to check that the change
 respects the agreement—and return useful evidence when it doesn't.
 
-**Early development:** the specification, Rust library with a lexer, parser, and
-module/name resolver, core type checker and typed core IR, installable CLI skeleton, conformance
-fixtures, and Go/Rust baseline harness are available. Rank-1 generic functions
-and data types are supported. Pactern compilation, verification, execution, and semantic edits remain to be
-implemented. The examples and workflow below describe the design.
+**Early development:** the specification, Rust frontend, typed core IR, pure
+reference interpreter, source formatter, installable CLI, conformance fixtures,
+and Go/Rust baseline harness are available. Rank-1 generic functions and data types
+are supported. The CLI checks and formats source-only packages. Compiled
+execution, verification, and semantic edits remain to be implemented. The examples
+and workflow below describe the design.
 
 ## Why write the rules twice?
 
@@ -223,12 +224,14 @@ Help, version metadata, structured tool diagnostics, and the library syntax,
 resolution, and core typing APIs work today. The resolver accepts parsed project
 files with package-relative module paths and returns file-aware declarations, references,
 and diagnostics. The type checker validates core values, local inference, calls,
-mutation, returns, rank-1 generics, and nested exhaustive matches. CLI commands such as `check`,
-`verify`, `test`, `build`, and `apply` still return explicit not-implemented errors; they do not process or
-modify a Pactern project.
+mutation, returns, rank-1 generics, and nested exhaustive matches. The pure library
+interpreter executes checked IR. `pactern check [PATH ...]` checks source-only
+packages; `pactern fmt [--check] [PATH ...]` formats source while preserving comments
+and tokens. Both select `src` and `contracts` by default and emit source-bound JSON
+diagnostics with `--json`. `verify`, `test`, `build`, and `apply` remain unavailable.
 
 If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): a typed core IR.
+[implementation milestone](MILESTONES.md): effects and noncopyable handles.
 The [conformance corpus](fixtures/conformance/README.md) and
 [Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
 reproducible measurements. Concrete edge cases, small failing programs, and challenges to

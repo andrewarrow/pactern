@@ -392,10 +392,23 @@ impl Machine<'_> {
                 let v = self.expr(scrutinee, env)?;
                 let mut found = None;
                 for a in arms {
-                    let mut bindings = Env::new();
+                    let mut bindings = BTreeMap::new();
                     if matches_pattern(&a.pattern, &v, &mut bindings) {
-                        env.extend(bindings);
-                        found = Some(self.expr(&a.value, env)?);
+                        // Pattern bindings copy values just like ordinary reads.
+                        // Charge before cloning, and only clone a selected arm's
+                        // bindings after the complete pattern has matched.
+                        for (id, value) in &bindings {
+                            let cost = value_cost(value, self.fuel).ok_or_else(|| {
+                                self.trap(TrapKind::ExecutionLimit, a.pattern.origin)
+                            })?;
+                            self.fuel -= cost;
+                            env.insert(*id, (*value).clone());
+                        }
+                        let result = self.expr(&a.value, env);
+                        for id in bindings.keys() {
+                            env.remove(id);
+                        }
+                        found = Some(result?);
                         break;
                     }
                 }
@@ -445,11 +458,11 @@ impl Machine<'_> {
             .ok_or_else(|| self.trap(TrapKind::Overflow, origin))
     }
 }
-fn matches_pattern(p: &Pattern, v: &Value, env: &mut Env) -> bool {
+fn matches_pattern<'a>(p: &Pattern, v: &'a Value, env: &mut BTreeMap<SymbolId, &'a Value>) -> bool {
     match (&p.kind, v) {
         (PatternKind::Wildcard, _) => true,
         (PatternKind::Binding(id), _) => {
-            env.insert(*id, v.clone());
+            env.insert(*id, v);
             true
         }
         (PatternKind::Bool(a), Value::Bool(b)) => a == b,

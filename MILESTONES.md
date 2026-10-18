@@ -122,6 +122,20 @@ and CLI project loading remain later work.
 
 ### 10. Add formatting and structured diagnostics
 
+**Status:** Complete for the source-only frontend. `pactern::formatting::format`
+preserves exact tokens, comments, and literal spellings while producing stable
+four-space/LF layout; parseable corpus inputs reparse with identical tokens and
+are idempotent. `pactern check [PATH ...]` and `pactern fmt [--check] [PATH ...]`
+load bounded source selections and emit protocol 0.1.0 diagnostics with stable
+codes, revision-bound UTF-8 byte spans, and related declarations. Snapshot hashes
+bind the selected source bytes and frontend profile, not future trusted acceptance
+inventories. Persistent symbol IDs remain milestone 21 work and are omitted rather
+than fabricated from local IDs. Nine formatter tests, six snapshot tests, thirteen
+CLI tests, workspace build/tests, formatting, and Clippy pass; 168 emitted CLI
+documents validate against the versioned schemas. See the
+[CLI contract](docs/cli/0.1.0/README.md) and
+[development guide](docs/development.md#formatting-and-source-diagnostics).
+
 **Languages/formats:** Rust; Pactern source; JSON diagnostic schema. **Done when:** formatting is stable under repeated runs and CLI diagnostics conform to the versioned schema with stable codes, spans, and relevant symbol IDs.
 
 ### 11. Track effects and noncopyable handles

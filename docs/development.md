@@ -38,8 +38,8 @@ Run the version command directly from the workspace with:
 cargo run -p pactern-cli -- version --json
 ```
 
-The CLI's version and help output work. Its project commands remain scaffolded
-and return a not-implemented diagnostic. The library parses implementation and
+The CLI supports version/help, core source checking, and formatting. Other project
+commands return a not-implemented diagnostic. The library parses implementation and
 contract source files and resolves parsed files together as a project. Resolution
 uses package-relative module paths and returns symbol/reference indexes and
 located diagnostics. The core type checker builds on this resolution result.
@@ -133,8 +133,8 @@ limited to 256. Exceeding these bounds emits `PTN_TYPE_LIMIT` or
 `PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. Borrowed
 parameters/arguments emit `PTN_TYPE_UNSUPPORTED_HANDLE`. Type checking performs no
 filesystem or network access and does not execute code. It does not establish
-effect bounds, handle safety, contract proofs, or runtime behavior. CLI project
-loading and protocol diagnostic envelopes remain later work.
+effect bounds, handle safety, contract proofs, or runtime behavior. The source-only
+CLI uses the snapshot adapter below to load inputs and emit protocol diagnostics.
 
 Syntax spans use zero-based UTF-8 byte offsets and one-based line and Unicode
 scalar columns. LF, CRLF, and lone CR each count as one newline. Spans are local
@@ -147,9 +147,10 @@ expression depth are limited to 64.
 The [conformance corpus](../fixtures/conformance/README.md) records expected
 Pactern outcomes. Workspace tests check syntax, resolver-phase, and type-phase
 diagnostics by staging each fixture's selected files at their declared module
-paths; they also exercise the conventional Rust comparison program. They do
-not run Pactern programs or check runtime or verification outcomes. With
-Go on `PATH`, run both baselines and record their build/execution costs with:
+paths; they also exercise the conventional Rust comparison program. Runtime
+expectations run in the interpreter suite; verification outcomes remain recorded
+expectations. With Go on `PATH`, run both baselines and record their
+build/execution costs with:
 
 ```sh
 go test ./baselines/go/main.go ./baselines/go/main_test.go
@@ -233,8 +234,8 @@ of a `Unit` function return unit. Break and continue target the enclosing loop.
 
 Effect declarations preserve omission versus an explicit empty bound but are not
 validated effect authority. Pacts retain typed Boolean clauses and targets, not
-obligation IDs, runtime guards, or verification results. Handles, interpretation,
-code generation, and CLI project loading remain later work.
+obligation IDs, runtime guards, or verification results. Handles and code
+generation remain later work; pure interpretation is described below.
 
 The core tests inspect lowered structure, generic specialization, nested patterns,
 field order, UTF-8 origins, imports/contracts, control flow, and rejection paths.
@@ -259,17 +260,71 @@ list indexes produce distinct traps with the originating IR source location.
 Recoverable `Result::Err` values remain ordinary return values.
 
 Default limits allow 100,000 fuel units and 64 nested function calls. Statements,
-expressions, and calls consume fuel; arguments and expression results additionally
-charge one unit per value node plus UTF-8 string bytes. Value nesting and function
-call depth have a hard ceiling of 64. Fuel exhaustion, excessive value nesting,
+expressions, and calls consume fuel; arguments, expression results, and selected
+match-binding copies additionally charge one unit per value node plus UTF-8 string
+bytes. Value nesting and function call depth have a hard ceiling of 64.
+Fuel exhaustion, excessive value nesting,
 and excessive call depth produce `ExecutionLimit`. These are reference-interpreter
 accounting rules, not future Wasm instruction or memory budgets. This in-process
 library is not a security sandbox or an allocator-failure isolation boundary.
 
 Pact clauses are retained in the program but are **not evaluated**. Effect
 declarations do not grant capabilities; there are no host operations. Runtime
-contract guards, proof, generated code, and CLI project loading remain later
+contract guards, proof, generated code, and CLI execution remain later
 milestones. The interpreter suite executes 48 pure-runtime conformance cases,
 including quota results and both transformations, without claiming their pact
 phase statuses. Separate tests cover generic helpers/data, nested patterns,
 loop control, value semantics, evaluation order, invalid invocations, and limits.
+
+## Formatting and source diagnostics
+
+`pactern::formatting::format(&SourceFile, FileKind)` parses before changing layout.
+It returns a complete source string or the original located lexer/parser error.
+The formatter retains every exact token spelling, comment, string escape,
+parenthesis, and trailing comma. Four-space indentation and LF apply to layout;
+comment contents are copied verbatim, including any embedded CRLF. Reformatting
+is idempotent. A `PTN_TOOL_FORMAT_LIMIT` diagnostic rejects output expansion beyond
+1 MiB so formatting cannot produce a file too large for the frontend to parse.
+
+`pactern::frontend::SourceSnapshot::new(Vec<SourceInput>)` owns a closed set of
+workspace-relative paths, raw bytes, and file kinds. It validates paths, rejects
+duplicates, and sorts files deterministically. `check()` decodes/parses every
+file, then runs resolution and core typing only if parsing all inputs succeeded.
+It returns protocol 0.1.0 diagnostics for the first failing stage with original
+stable codes, phase, source revision, primary byte span, and related declaration
+spans. Invalid UTF-8 has no usable scalar span; its path and first invalid byte
+are reported in a note. Local syntax/resolution/typing APIs remain unchanged.
+
+The snapshot digest uses protocol `H("workspace", records)` framing with:
+
+- `file` records keyed by canonical relative path, hashing exact source bytes;
+- `configuration` records `file-kind/<path>`, hashing `implementation` or `contract`;
+- `configuration` records `profile`, `language`, `protocol`, and `tool-version`,
+  hashing `source-only-frontend/1` and the corresponding version constants.
+
+Order, timestamps, absolute workspace paths, command verbs, presentation flags,
+and `fmt --check` do not affect this digest. Adding/removing files, changing a
+path/kind, or modifying any input byte does. SHA-256 comes from the shared `sha2`
+dependency. This profile binds diagnostic offsets to exact source inputs; it
+**does not implement** the full trusted snapshot inventory for acceptance/evidence
+and semantic edits. There is no manifest, dependency, identity, policy-baseline,
+or compiler-distribution content-root loader yet. Protocol `symbol_id` is omitted
+until persistent identities are available; resolver-local IDs are never encoded
+as persistent IDs.
+
+The CLI exposes these APIs through `check [PATH ...]` and `fmt [--check] [PATH ...]`.
+For example, after building, this checks the quota implementation and its pact
+without writing either file:
+
+```sh
+(cd fixtures/conformance && ../../target/debug/pactern check src/quota.ptn contracts/quota.pact.ptn --json)
+(cd fixtures/conformance && ../../target/debug/pactern fmt --check src/quota.ptn contracts/quota.pact.ptn --json)
+```
+
+The last command exits 1 if those checked-in fixtures need formatting; they are
+not rewritten by the test suite. See the [CLI reference](cli/0.1.0/README.md) for
+source discovery, bounds, success schemas, exit codes, and write behavior.
+Formatter tests check exact token streams, reparsing, and repeated output across
+the parseable corpus. Frontend/CLI tests cover snapshot changes, UTF-8 spans,
+related declarations, malformed packages, read-only checking, permissions, and
+validation before writes.

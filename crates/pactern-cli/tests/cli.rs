@@ -179,8 +179,6 @@ fn unsupported_commands_accept_unicode_paths_without_touching_project() {
     let before = tree_snapshot(&project);
 
     for args in [
-        vec!["--json", "check"],
-        vec!["fmt", "--check", "--json"],
         vec!["verify", "--json"],
         vec!["test", "--affected", "--json"],
         vec!["build", "--target", "wasm", "--json"],
@@ -210,6 +208,164 @@ fn unsupported_commands_accept_unicode_paths_without_touching_project() {
         }
     }
     assert_eq!(tree_snapshot(&project), before);
+}
+
+#[test]
+fn check_loads_a_closed_source_package_and_reports_located_errors() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    fs::create_dir(temp.path().join("contracts")).unwrap();
+    let source = temp.path().join("src/main.ptn");
+    fs::write(&source, "module main; fn answer()->I64 {return 42;}").unwrap();
+    fs::write(
+        temp.path().join("contracts/main.pact.ptn"),
+        "module main; pact positive for answer {ensures result > 0;}",
+    )
+    .unwrap();
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["check", "--json"]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["kind"], "check");
+    assert_eq!(json["files"].as_array().unwrap().len(), 2);
+    assert_eq!(tree_snapshot(temp.path()), before);
+
+    let text = "module main; // é\r\nfn answer()->I64 {return true;}";
+    fs::write(&source, text).unwrap();
+    let output = run_in(temp.path(), &["check", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stderr.is_empty());
+    let error: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(error["code"], "PTN_TYPE_MISMATCH");
+    assert_eq!(error["phase"], "type");
+    assert_eq!(error["span"]["path"], "src/main.ptn");
+    assert_eq!(error["span"]["start_byte"], text.find("true").unwrap());
+    assert_ne!(json["source_revision"], error["source_revision"]);
+    let plain = run_in(temp.path(), &["check"]);
+    assert!(plain.stdout.is_empty());
+    let stderr = String::from_utf8(plain.stderr).unwrap();
+    assert!(stderr.contains("src/main.ptn:"));
+    assert!(stderr.contains("PTN_TYPE_MISMATCH"));
+}
+
+#[test]
+fn format_checks_without_writing_and_repeated_formatting_is_stable() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let source = temp.path().join("src/main.ptn");
+    let text = "// é\r\nmodule main;fn answer()->I64{return 42;} // kept";
+    fs::write(&source, text).unwrap();
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["fmt", "--check", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stderr.is_empty());
+    let error: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(error["code"], "PTN_TOOL_FORMAT_REQUIRED");
+    assert_eq!(error["span"]["path"], "src/main.ptn");
+    assert_eq!(tree_snapshot(temp.path()), before);
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["kind"], "format");
+    assert_eq!(json["files"][0]["changed"], true);
+    let once = fs::read_to_string(&source).unwrap();
+    assert!(once.contains("// kept"));
+    assert!(once.ends_with('\n'));
+    assert_ne!(once, text);
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["fmt", "--check", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(tree_snapshot(temp.path()), before);
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["files"][0]["changed"], false);
+    assert_eq!(tree_snapshot(temp.path()), before);
+}
+
+#[test]
+fn formatting_validates_the_entire_selection_before_any_write() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    fs::write(
+        temp.path().join("src/a.ptn"),
+        "module a;fn run()->I64{return 1;}",
+    )
+    .unwrap();
+    fs::write(temp.path().join("src/z.ptn"), "module z; fn").unwrap();
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["phase"], "parse");
+    assert_eq!(json["span"]["path"], "src/z.ptn");
+    assert_eq!(tree_snapshot(temp.path()), before);
+    fs::write(temp.path().join("src/z.ptn"), [255]).unwrap();
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["code"], "PTN_LEX_INVALID_UTF8");
+    assert!(json.get("span").is_none());
+    assert_eq!(tree_snapshot(temp.path()), before);
+}
+
+#[test]
+fn explicit_selections_empty_sources_and_overlaps_have_clear_results() {
+    let temp = TempDir::new();
+    let output = run_in(temp.path(), &["check", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["code"], "PTN_TOOL_NO_SOURCES");
+    fs::create_dir(temp.path().join("src")).unwrap();
+    fs::write(
+        temp.path().join("src/main.ptn"),
+        "module main; fn run()->Unit {}",
+    )
+    .unwrap();
+    fs::write(temp.path().join("src/broken.ptn"), "not source").unwrap();
+    let output = run_in(temp.path(), &["check", "./src/main.ptn", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let output = run_in(temp.path(), &["fmt", "src", "src/main.ptn", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["code"], "PTN_TOOL_INVALID_ARGUMENTS");
+    let output = run_in(temp.path(), &["check", "missing.ptn", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["code"], "PTN_TOOL_IO");
+}
+
+#[cfg(unix)]
+#[test]
+fn formatting_preserves_permissions_and_rejects_source_symlinks() {
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let path = temp.path().join("src/main.ptn");
+    fs::write(&path, "module main;fn run()->Unit{}").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+    assert_eq!(
+        run_in(temp.path(), &["fmt", "--json"]).status.code(),
+        Some(0)
+    );
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o640
+    );
+    symlink(&path, temp.path().join("src/alias.ptn")).unwrap();
+    let before = fs::read(&path).unwrap();
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["code"], "PTN_TOOL_INVALID_ARGUMENTS");
+    assert_eq!(fs::read(&path).unwrap(), before);
 }
 
 fn run_os_in(directory: &Path, args: Vec<OsString>) -> Output {

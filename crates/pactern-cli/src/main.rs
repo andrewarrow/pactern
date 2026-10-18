@@ -7,10 +7,12 @@ use clap::{CommandFactory, Parser, Subcommand};
 use pactern::{Command, Diagnostic, Target};
 use serde::Serialize;
 
+mod source_commands;
+
 #[derive(Parser)]
 #[command(
     name = "pactern",
-    about = "Pactern toolchain (milestone 2 skeleton)",
+    about = "Pactern language toolchain",
     disable_help_flag = true,
     disable_version_flag = true,
     disable_help_subcommand = true,
@@ -43,12 +45,17 @@ enum CliCommand {
     Version,
     /// Print help for the CLI or one command
     Help { command: Option<String> },
-    /// Check a project (not implemented)
-    Check,
-    /// Format source (not implemented)
+    /// Check core value types in a closed source package
+    Check {
+        /// Files or directories (defaults to src and contracts)
+        paths: Vec<PathBuf>,
+    },
+    /// Format source files, preserving comments and literal spellings
     Fmt {
         #[arg(long)]
         check: bool,
+        /// Files or directories (defaults to src and contracts)
+        paths: Vec<PathBuf>,
     },
     /// Verify pacts (not implemented)
     Verify,
@@ -91,8 +98,8 @@ impl CliCommand {
     fn into_command(self) -> Result<Command, Diagnostic> {
         Ok(match self {
             Self::Version => Command::Version,
-            Self::Check => Command::Check,
-            Self::Fmt { check } => Command::Fmt { check },
+            Self::Check { .. } => Command::Check,
+            Self::Fmt { check, .. } => Command::Fmt { check },
             Self::Verify => Command::Verify,
             Self::Test { affected } => Command::Test { affected },
             Self::Build { target } => {
@@ -164,12 +171,29 @@ fn report_error(error: &Diagnostic, json: bool) -> io::Result<u8> {
     if json {
         write_json(error)?;
     } else {
+        let location = error
+            .span()
+            .map(|span| format!("{}:{}..{}: ", span.path, span.start_byte, span.end_byte))
+            .unwrap_or_default();
         writeln!(
             io::stderr().lock(),
-            "error[{}]: {}",
+            "{location}error[{}]: {}",
             error.code(),
             error.message()
         )?;
+        for related in error.related() {
+            writeln!(
+                io::stderr().lock(),
+                "  {}:{}..{}: {}",
+                related.span.path,
+                related.span.start_byte,
+                related.span.end_byte,
+                related.message
+            )?;
+        }
+        for note in error.notes() {
+            writeln!(io::stderr().lock(), "  note: {note}")?;
+        }
     }
     Ok(match error.code() {
         "PTN_TOOL_INVALID_ARGUMENTS" | "PTN_TOOL_UNSUPPORTED_PROTOCOL" => 2,
@@ -217,6 +241,26 @@ fn run(args: Vec<OsString>) -> io::Result<u8> {
     let command = if cli.version {
         Ok(Command::Version)
     } else {
+        if let Some(command) = &cli.command {
+            let result = match command {
+                CliCommand::Check { paths } => Some(source_commands::run(paths, false, false)),
+                CliCommand::Fmt { paths, check } => Some(source_commands::run(paths, true, *check)),
+                _ => None,
+            };
+            if let Some(result) = result {
+                return match result {
+                    Ok(output) => {
+                        if cli.json {
+                            write_json(&output)?;
+                        } else {
+                            writeln!(io::stdout().lock(), "{}", output.summary())?;
+                        }
+                        Ok(0)
+                    }
+                    Err(error) => report_error(&error, cli.json),
+                };
+            }
+        }
         cli.command
             .ok_or_else(|| Diagnostic::invalid_arguments("A command is required."))
             .and_then(CliCommand::into_command)
