@@ -369,7 +369,7 @@ fn source_identities_and_reserved_names_are_checked_without_io() {
 }
 
 #[test]
-fn absent_host_registry_does_not_fabricate_symbols_and_effect_labels_are_deferred() {
+fn registered_host_symbols_resolve_and_effect_labels_are_deferred() {
     let resolution = resolve(&[file(
         "src/main.ptn",
         r#"module main; import host::quota;
@@ -378,14 +378,7 @@ fn absent_host_registry_does_not_fabricate_symbols_and_effect_labels_are_deferre
         }
     "#,
     )]);
-    assert_eq!(
-        codes(&resolution),
-        [
-            "PTN_RESOLVE_UNRESOLVED_MODULE",
-            "PTN_RESOLVE_UNRESOLVED_NAME",
-            "PTN_RESOLVE_UNRESOLVED_NAME"
-        ]
-    );
+    assert!(resolution.is_success(), "{:?}", resolution.diagnostics);
     assert_eq!(
         resolution
             .deferred

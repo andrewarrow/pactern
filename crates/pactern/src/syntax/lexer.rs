@@ -2,6 +2,9 @@ use super::source::{Position, SourceFile, Span, SyntaxDiagnostic};
 
 /// Maximum source size accepted by the lexer, measured in UTF-8 bytes.
 pub const MAX_SOURCE_BYTES: usize = 1024 * 1024;
+/// Physical lines per source or contract file, including comments and blanks.
+/// A final line terminator closes its line without adding an empty line.
+pub const MAX_SOURCE_LINES: usize = 1000;
 /// Maximum emitted token count. The EOF token is included in this budget.
 pub const MAX_TOKENS: usize = 100_000;
 
@@ -98,7 +101,43 @@ pub fn lex(source: &SourceFile) -> Result<Vec<Token>, SyntaxDiagnostic> {
         ));
     }
 
+    check_line_limit(source)?;
     Scanner::new(source).scan()
+}
+
+pub(crate) fn check_line_limit(source: &SourceFile) -> Result<(), SyntaxDiagnostic> {
+    let bytes = source.text().as_bytes();
+    let mut line = 1;
+    let mut byte = 0;
+    while byte < bytes.len() {
+        if line > MAX_SOURCE_LINES {
+            let at = Position {
+                byte,
+                line,
+                column: 1,
+            };
+            return Err(SyntaxDiagnostic::new(
+                "PTN_LEX_LINE_LIMIT",
+                "lex",
+                format!(
+                    "source exceeds {MAX_SOURCE_LINES} lines; split this file into smaller modules"
+                ),
+                Span { start: at, end: at },
+            ));
+        }
+        match bytes[byte] {
+            b'\r' => {
+                line += 1;
+                if bytes.get(byte + 1) == Some(&b'\n') {
+                    byte += 1;
+                }
+            }
+            b'\n' => line += 1,
+            _ => {}
+        }
+        byte += 1;
+    }
+    Ok(())
 }
 
 struct Scanner<'a> {

@@ -14,11 +14,12 @@ The ambition is to make correct changes cheaper to produce, easier to review,
 and safer to execute. “The best of them all” means demonstrating that outcome,
 not accumulating every feature of the five languages studied here.
 
-The repository now contains the milestone 2 Rust workspace and a CLI scaffold
-for version and help output. The compiler, runtime, and project commands are
-not implemented; most capabilities below remain design targets. Research
-describes upstream documentation inspected on October 17, 2026; the upstream
-implementations were not independently built or audited.
+The repository now includes the frontend, pure interpreter, C/Wasm path, narrow
+SMT verifier, managed semantic editing, and quota host prototype. This document
+records the design rationale rather than a conformance claim; [MILESTONES.md](MILESTONES.md)
+is the implementation ledger. The [candidate evaluation](docs/alpha-evaluation.md)
+records actual runtime measurements and the remaining agent-evaluation gaps.
+Research below describes upstream documentation inspected on October 17, 2026.
 
 ## 1. The opportunity
 

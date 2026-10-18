@@ -45,7 +45,7 @@ impl SourceOutput {
     }
 }
 
-pub fn run(paths: &[PathBuf], format: bool, check: bool) -> Result<SourceOutput, Diagnostic> {
+pub fn load(paths: &[PathBuf]) -> Result<SourceSnapshot, Diagnostic> {
     let root = fs::canonicalize(std::env::current_dir().map_err(io_error)?).map_err(io_error)?;
     let mut discovered = Vec::new();
     if paths.is_empty() {
@@ -102,7 +102,12 @@ pub fn run(paths: &[PathBuf], format: bool, check: bool) -> Result<SourceOutput,
             kind,
         });
     }
-    let snapshot = SourceSnapshot::new(inputs)?;
+    SourceSnapshot::new(inputs)
+}
+
+pub fn run(paths: &[PathBuf], format: bool, check: bool) -> Result<SourceOutput, Diagnostic> {
+    let root = fs::canonicalize(std::env::current_dir().map_err(io_error)?).map_err(io_error)?;
+    let snapshot = load(paths)?;
     if !format && let Some(error) = snapshot.check().into_iter().next() {
         return Err(error);
     }

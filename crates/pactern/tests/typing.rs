@@ -422,7 +422,7 @@ fn type_arity_and_handle_boundaries_are_explicit() {
     );
     rejects(
         "fn g(x: I64) -> Unit {} fn f(x: I64) -> Unit { g(borrow x); }",
-        "PTN_TYPE_UNSUPPORTED_HANDLE",
+        "PTN_HANDLE_BORROW_MODE",
     );
 }
 

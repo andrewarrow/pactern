@@ -38,8 +38,8 @@ Run the version command directly from the workspace with:
 cargo run -p pactern-cli -- version --json
 ```
 
-The CLI supports version/help, core source checking, and formatting. Other project
-commands return a not-implemented diagnostic. The library parses implementation and
+The CLI supports source checking/formatting, compiled build/run, narrow verification,
+seeded tests, semantic queries, editor adapters, and managed changes. The library parses implementation and
 contract source files and resolves parsed files together as a project. Resolution
 uses package-relative module paths and returns symbol/reference indexes and
 located diagnostics. The core type checker builds on this resolution result.
@@ -87,7 +87,7 @@ access. Its file, module, and symbol IDs belong to one result and are not
 persistent identities. Diagnostics and references include a file ID because
 syntax spans are local to one source file. Field accesses and effect labels are
 recorded for later phases; resolution itself does not check types, effects, generic
-recursion, handles, or host registries.
+recursion, or handle ownership; it resolves the built-in quota registry.
 
 Check core types after parsing the closed project:
 
@@ -130,26 +130,28 @@ would trap at runtime remain valid types.
 Expanded types are limited to depth 64 and 1,024 nodes. Each match has a budget of
 20,000 analysis units (charging row scans and recursive steps), with recursion
 limited to 256. Exceeding these bounds emits `PTN_TYPE_LIMIT` or
-`PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. Borrowed
-parameters/arguments emit `PTN_TYPE_UNSUPPORTED_HANDLE`. Type checking performs no
-filesystem or network access and does not execute code. It does not establish
-effect bounds, handle safety, contract proofs, or runtime behavior. The source-only
-CLI uses the snapshot adapter below to load inputs and emit protocol diagnostics.
+`PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. After value typing,
+the effect and ownership pass checks declared bounds and registered quota handles,
+including borrowed parameters and arguments. Borrowing ordinary values remains
+invalid. Type checking performs no filesystem or network access and does not
+execute code or establish contract proofs. The source-only CLI uses the snapshot
+adapter below to load inputs and emit protocol diagnostics.
 
 Syntax spans use zero-based UTF-8 byte offsets and one-based line and Unicode
 scalar columns. LF, CRLF, and lone CR each count as one newline. Spans are local
 to the `SourceFile` that produced them. `SyntaxDiagnostic` reports the first
 lexer or parser error with a local span; it is not the revision-bound protocol
 diagnostic envelope used for later project operations. The lexer accepts at most
-1 MiB of source and 100,000 emitted tokens including EOF. Parser nesting and
+1 MiB of source, 1,000 physical lines, and 100,000 emitted tokens including EOF. Parser nesting and
 expression depth are limited to 64.
 
 The [conformance corpus](../fixtures/conformance/README.md) records expected
 Pactern outcomes. Workspace tests check syntax, resolver-phase, and type-phase
 diagnostics by staging each fixture's selected files at their declared module
 paths; they also exercise the conventional Rust comparison program. Runtime
-expectations run in the interpreter suite; verification outcomes remain recorded
-expectations. With Go on `PATH`, run both baselines and record their
+expectations run in the interpreter and compiled Wasm suites; verification
+expectations are checked against the external SMT solver in the pact suite.
+With Go on `PATH`, run both baselines and record their
 build/execution costs with:
 
 ```sh
@@ -187,8 +189,8 @@ All IDs belong to the enclosing resolution result. No monomorphized executable i
 call-site type arguments in generic IR. Recursive call cycles involving a generic
 function (including through nongeneric helpers and changing instantiations) emit
 `PTN_TYPE_GENERIC_RECURSION`. Recursive nominal data remains supported within
-bounded type and coverage analysis. Handles remain unavailable and cannot be
-passed or instantiated as ordinary generic values.
+bounded type and coverage analysis. Registered handles have a separate ownership
+pass and cannot instantiate ordinary generic values.
 
 
 ### Typed core IR
@@ -232,10 +234,11 @@ expression origin. A directly negated integer becomes a signed `i64`, including
 `i64::MIN`; other negation stays an operation. `Return(None)` and normal fallthrough
 of a `Unit` function return unit. Break and continue target the enclosing loop.
 
-Effect declarations preserve omission versus an explicit empty bound but are not
-validated effect authority. Pacts retain typed Boolean clauses and targets, not
-obligation IDs, runtime guards, or verification results. Handles and code
-generation remain later work; pure interpretation is described below.
+Effect declarations preserve omission versus an explicit empty bound; the frontend
+checks those bounds without granting authority. Pacts retain typed Boolean clauses
+and targets. The pact inventory, guard compiler, and verifier consume them through
+separate APIs. Pure interpretation is described below; compiled execution is
+covered in [the backend guide](backend.md).
 
 The core tests inspect lowered structure, generic specialization, nested patterns,
 field order, UTF-8 origins, imports/contracts, control flow, and rejection paths.
@@ -268,10 +271,10 @@ and excessive call depth produce `ExecutionLimit`. These are reference-interpret
 accounting rules, not future Wasm instruction or memory budgets. This in-process
 library is not a security sandbox or an allocator-failure isolation boundary.
 
-Pact clauses are retained in the program but are **not evaluated**. Effect
-declarations do not grant capabilities; there are no host operations. Runtime
-contract guards, proof, generated code, and CLI execution remain later
-milestones. The interpreter suite executes 48 pure-runtime conformance cases,
+The original `execute` entry remains an unguarded reference path.
+`execute_guarded` additionally enforces pacts. Effect declarations do not grant
+capabilities; host services use the explicit scoped adapter.
+The interpreter suite executes 48 pure-runtime conformance cases,
 including quota results and both transformations, without claiming their pact
 phase statuses. Separate tests cover generic helpers/data, nested patterns,
 loop control, value semantics, evaluation order, invalid invocations, and limits.
@@ -300,17 +303,16 @@ The snapshot digest uses protocol `H("workspace", records)` framing with:
 - `file` records keyed by canonical relative path, hashing exact source bytes;
 - `configuration` records `file-kind/<path>`, hashing `implementation` or `contract`;
 - `configuration` records `profile`, `language`, `protocol`, and `tool-version`,
-  hashing `source-only-frontend/1` and the corresponding version constants.
+  hashing `source-frontend/2-effects-lines` and the corresponding version constants.
 
 Order, timestamps, absolute workspace paths, command verbs, presentation flags,
 and `fmt --check` do not affect this digest. Adding/removing files, changing a
 path/kind, or modifying any input byte does. SHA-256 comes from the shared `sha2`
 dependency. This profile binds diagnostic offsets to exact source inputs; it
 **does not implement** the full trusted snapshot inventory for acceptance/evidence
-and semantic edits. There is no manifest, dependency, identity, policy-baseline,
-or compiler-distribution content-root loader yet. Protocol `symbol_id` is omitted
-until persistent identities are available; resolver-local IDs are never encoded
-as persistent IDs.
+and semantic edits. Those use separate managed workspace and evidence APIs.
+Raw source diagnostics omit `symbol_id`; managed semantic queries use persisted
+identities, and resolver-local IDs are never encoded as persistent IDs.
 
 The CLI exposes these APIs through `check [PATH ...]` and `fmt [--check] [PATH ...]`.
 For example, after building, this checks the quota implementation and its pact
@@ -328,3 +330,60 @@ Formatter tests check exact token streams, reparsing, and repeated output across
 the parseable corpus. Frontend/CLI tests cover snapshot changes, UTF-8 spans,
 related declarations, malformed packages, read-only checking, permissions, and
 validation before writes.
+
+
+## Current candidate APIs
+
+The earlier sections describe the APIs introduced by milestones 2–10. The current
+candidate additionally exports `effects`, `backend`, `pacts`, `verification`,
+`evidence`, `semantic`, `workspace`, `acceptance`, `editor`, and `host`.
+`typing::check` now enforces effect and handle rules after value typing succeeds.
+`interpreter::execute` preserves the unguarded reference path;
+`execute_guarded` checks requires/ensures, including nested calls and recoverable
+error returns. The CLI runs guarded compiled code by default.
+
+See [the backend ABI](backend.md), [verification/evidence](verification.md),
+[semantic transactions](semantic.md), [host services](host.md), and
+[the candidate validation guide](candidate.md) for supported paths and limits.
+The shared source snapshot remains a frontend diagnostic identity. Managed
+workspace revisions additionally bind identity data, external inputs, and policy;
+evidence binds the concrete artifact and toolchain. These are distinct identities.
+
+Every `.ptn` and `.pact.ptn` input is capped at 1,000 physical lines, including
+blank lines and comments. CRLF counts once; a final newline closes the last line
+without adding another. `PTN_LEX_LINE_LIMIT` locates the first excess line.
+Formatting rejects an expanded result with `PTN_TOOL_FORMAT_LINE_LIMIT` before
+writing any selected file. This restriction applies to Pactern files, not the
+Rust/C implementation or generated C. Tests cover mixed newlines, UTF-8, comments,
+exactly 1,000 lines, 1,001 lines, and formatter expansion.
+
+## Full JSON Schema validation
+
+The optional development validator uses `jsonschema==4.25.1`; it adds no Rust
+runtime dependency:
+
+```sh
+python3 -m venv target/schema-tools
+target/schema-tools/bin/python -m pip install jsonschema==4.25.1
+target/schema-tools/bin/python scripts/validate-protocol.py
+```
+
+The script builds the CLI, validates every checked-in schema, runs `check` and
+`fmt --check` for all 79 conformance selections in temporary projects, and checks
+real version/help/error, semantic-query, and editor output. It runs the
+`query_protocol` Rust test with an absolute `PACTERN_QUERY_CAPTURE_DIR`, validates
+its actual request/response captures, and regenerates the quota workflow before
+validating its artifact evidence. No checked-in fixture is formatted or changed.
+
+The current run validates 10 schemas and 202 instance documents: 9 protocol
+examples, 177 emitted CLI documents, 14 query/editor captures, one generated
+change request, and one workflow evidence report. Seven protocol examples pass
+structurally and two fail; the stale/protected `.invalid.json` examples deliberately
+pass structural validation as specified in protocol section 7. Their contextual
+rejection is tested separately by the Rust transaction suite.
+
+Counts and schema/tool/evidence hashes are written to
+`target/protocol-validation.json`. Use `--no-build --cli /path/to/pactern` for an
+already installed candidate, `--capture-dir PATH` for existing query captures, or
+`--evidence PATH` to validate an existing workflow report. The default regenerates
+captures and workflow evidence from the current source.

@@ -1,0 +1,54 @@
+name: Candidate validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trusted-acceptance:
+    if: github.event_name == 'pull_request'
+    runs-on: macos-15
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+      - name: Check out trusted base
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+          persist-credentials: false
+      - name: Install fixed Rust compiler
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Build and run gate from trusted base only
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/trusted-acceptance-build
+        run: |
+          test -f baseline/crates/pactern/examples/acceptance_gate.rs
+          cargo +1.98.1 build --locked --manifest-path baseline/Cargo.toml -p pactern --example acceptance_gate
+          "$CARGO_TARGET_DIR/debug/examples/acceptance_gate" "$GITHUB_WORKSPACE/baseline" "$GITHUB_WORKSPACE/candidate"
+  full-suite:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install toolchain
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+          brew install llvm@21 lld@21 z3
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Verify external tool versions
+        run: |
+          /opt/homebrew/opt/llvm@21/bin/clang --version | head -1 | grep '21.1.8'
+          /opt/homebrew/opt/lld@21/bin/wasm-ld --version | grep '21.1.8'
+          z3 --version | grep '5.3.1'
+      - name: Validate and install candidate from a clean target directory
+        run: scripts/validate-candidate.sh

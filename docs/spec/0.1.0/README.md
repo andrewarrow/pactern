@@ -1,8 +1,9 @@
 # Pactern specification 0.1.0
 
-**Status:** first reviewable draft, revision 1. This bundle completes the
-specification deliverables of [milestone 1](../../../MILESTONES.md). It does not
-implement a compiler, runtime, verifier, or semantic-edit service.
+**Status:** unreleased draft, revision 2. This bundle defines the candidate
+language and protocol; [MILESTONES.md](../../../MILESTONES.md) separately records
+the experimental implementation and remaining release gates. Revision 2 adds the
+1,000-line source limit and the semantic/editor query contracts.
 
 The [vision](../../../PLAN.md) explains the design. This bundle makes the first
 language subset and wire contracts concrete enough to implement and review.
@@ -15,6 +16,8 @@ language subset and wire contracts concrete enough to implement and review.
 | [Protocol](protocol.md) | Versioning, diagnostics, revisions, semantic edits, and acceptance boundaries |
 | [Diagnostic schema](schemas/diagnostic.schema.json) | Machine-readable diagnostic shape |
 | [Change-request schema](schemas/change-request.schema.json) | Machine-readable candidate edit shape |
+| [Semantic query request](schemas/semantic-query-request.schema.json) / [response](schemas/semantic-query-response.schema.json) | Inspection, callers, impact, and affected tests |
+| [Editor request](schemas/editor-request.schema.json) / [response](schemas/editor-response.schema.json) | Diagnostics and declaration navigation |
 
 Protocol example payloads and their expected validation outcomes are described in
 [the protocol document](protocol.md). JSON Schema validates structure; contextual
@@ -40,19 +43,20 @@ remain explicit service obligations.
 
 ## Versioning and validation
 
-The bundle version is `0.1.0`; the draft revision records this initial publication.
-Any subsequent normative language or protocol change must publish a new versioned
-bundle. Editorial corrections may remain in this directory. Tools must select an
-exact supported version and reject unknown wire versions rather than guess.
+The bundle version is `0.1.0`. Until the first public distribution, draft revisions
+record normative changes in this candidate directory. After distribution, a
+normative language or protocol change requires a new versioned bundle; editorial
+corrections may remain. Tools select an exact supported wire version and reject
+unknown versions rather than guess. There is no released compatibility promise
+between these unreleased drafts.
 
 The language semantics and grammar are normative together. Contradictions are
 specification defects to fix before implementation, not permission to choose a
 convenient interpretation. Examples illustrate the same rules. Future conformance
 fixtures should cite the relevant rule and expected outcome.
 
-Validation for this milestone checks the EBNF's internal structure, JSON Schema
-definitions and example payloads, Markdown links, and cross-document consistency.
-There is no Pactern parser yet, so source examples have been reviewed against the
-grammar rather than executed. Milestones 2 and 3 now provide the Rust workspace
-and [conformance/baseline harness](../../../baselines/README.md) respectively;
-the harness executes conventional Go/Rust comparisons, not Pactern source.
+Validation includes parser and type/effect conformance, interpreter/Wasm
+comparisons, pact guards and narrow SMT claims, semantic transactions, schemas,
+and the version-matched install workflow. See [development](../../development.md)
+for reproducible commands. JSON Schema checks structure; trusted context and
+execution checks remain necessary.

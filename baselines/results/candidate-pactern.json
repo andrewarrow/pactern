@@ -1,0 +1,910 @@
+{
+  "agent_experiment": {
+    "matched_models_budgets_documentation": "unmeasured",
+    "repair_success": "unmeasured",
+    "review_time": "unmeasured",
+    "status": "not_run",
+    "text_vs_semantic_edit": "unmeasured",
+    "token_currency_costs": "unmeasured"
+  },
+  "arch": "aarch64",
+  "artifacts": [
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:3697d8b1fafcc7f9d6b6ca44ec3676f8d603d6b9e56a5a0b9d83719188d68f49",
+      "guarded": false,
+      "id": "quota-success",
+      "sha256": "sha256:59694316a2bcce05921e66f82abdd4377ab3e40c0e08685d710e32c621f2b338"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:572533f3a80d0184486630f1cb36d4e2b6c8050bd49a17a64c1a29c0d4b9eb0f",
+      "guarded": false,
+      "id": "quota-invalid-amount",
+      "sha256": "sha256:937176d3819ef989457c39fddbea0a3a6db89a57b4898522596c757adeb67ac2"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:d37f42bda812a0c4c570f5d0dfb3e9b4c0f9d2af3454518818774eadceb05b19",
+      "guarded": false,
+      "id": "quota-invalid-negative-amount",
+      "sha256": "sha256:3e666378ac4b47f52631cc7a71ab820d7835974039805b6f1ac9ac9fe333aa1f"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:9f41549b3ef017b79260e6e965128716c29b608caacb354e39b42e09b4db088a",
+      "guarded": false,
+      "id": "quota-insufficient",
+      "sha256": "sha256:b0a2379c6be6c663716587100b20e6e4e8ed0c0b99c57995c3633abf2f331b19"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:da97fc6da7af3d19d419e7149519d8acedf4ac0093cd5b9162fb29654fa450fc",
+      "guarded": false,
+      "id": "quota-zero-available",
+      "sha256": "sha256:09e71892c94f1b3d0b833bf1b75a473259d8b3c370d13d8a6a598f553a32f4f5"
+    },
+    {
+      "bytes": 7287,
+      "c_sha256": "sha256:f73542bbc3d138e01be1e28c025ae573fe8d8d5fa58304673e3895664aad5a40",
+      "guarded": false,
+      "id": "quota-maximum",
+      "sha256": "sha256:22c6db795aaa5804e2681254b6983d87efa0d8f62a20c2360799a11854a1bbdc"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:ffbb69d88812602b68113ac9cb3d8086e7f64a2c8f9bf49c068701dcd4517001",
+      "guarded": false,
+      "id": "quota-exact-exhaustion",
+      "sha256": "sha256:a79df7838d82314a4442f6f661408d63edbcc52584e39d09cdab7b4d9775c6de"
+    },
+    {
+      "bytes": 7287,
+      "c_sha256": "sha256:a00a7d303bbe634602e7a0e8625c9f302c020312f14814bd82b0e341aec6ce99",
+      "guarded": false,
+      "id": "quota-minimum-amount-is-rejected",
+      "sha256": "sha256:a0e58c3c87bcbb88e4e8f696e30c1977d2ea6e1928967160cdccdcfe499740df"
+    },
+    {
+      "bytes": 7305,
+      "c_sha256": "sha256:2f22b5785fd5bc97494944c1cfb606e3b2046c654808f01d9aa50d980be7ab40",
+      "guarded": false,
+      "id": "quota-maximum-exact-exhaustion",
+      "sha256": "sha256:10c8b88bc807307aa2838f10f8c03a938da778d36306f44a95e37aeac8abf18c"
+    },
+    {
+      "bytes": 7269,
+      "c_sha256": "sha256:82c8d9109eb83e8b40dd86b99c0a73103bbde4c9e0bcd6f2b285986dcfa76d38",
+      "guarded": false,
+      "id": "quota-precondition-fails",
+      "sha256": "sha256:53e4311f3d53b02d1f456bba7984713e950cb4ba4e4faf1f58ec83cd2666b883"
+    },
+    {
+      "bytes": 7559,
+      "c_sha256": "sha256:df9a89bd1b51d7c2b4aa45abdddccee3fced430e0aafa6080e8335786c5cba02",
+      "guarded": false,
+      "id": "pair-totals-normal",
+      "sha256": "sha256:7a3dbabecbd48d4a5b2ad36ebafd69b5eab5b3ed192ed0861318ca2cc3a095c2"
+    },
+    {
+      "bytes": 7559,
+      "c_sha256": "sha256:9b374d87e77a4f9a520401bf793c7971f867ff8f7568f7f453fe54d459a4aebe",
+      "guarded": false,
+      "id": "pair-totals-negative",
+      "sha256": "sha256:d58703436b5732a00f545413ccf34774ae1c3129b0d11db70653c327116b3443"
+    },
+    {
+      "bytes": 7836,
+      "c_sha256": "sha256:89e3dfdfe85739476133f4f532b235c71621de29f0f60ea09b68e94d66c900b1",
+      "guarded": false,
+      "id": "pair-totals-short-list",
+      "sha256": "sha256:41c11e448def51d7efe4d031a7b688e7cc711546fe5ce4c5e74a02cab00ce83d"
+    },
+    {
+      "bytes": 7413,
+      "c_sha256": "sha256:3f9daa50a602af1f7da97a703c92238da19ea3753aa8aabf6a340675763a08e9",
+      "guarded": false,
+      "id": "pair-totals-empty-list",
+      "sha256": "sha256:1246a29a5963e5519a9752347760c15e9570a3ba1c772f627fe726e4ce7270e3"
+    },
+    {
+      "bytes": 7568,
+      "c_sha256": "sha256:b27526caa3f3045e615a986d05a8a3e6686d342471c038a628a81c31800218d6",
+      "guarded": false,
+      "id": "pair-totals-overflow-left-first",
+      "sha256": "sha256:5d18b2303707621c19d2d487331863faa8f9c56589ca959fefb0bbfb42b68333"
+    },
+    {
+      "bytes": 7761,
+      "c_sha256": "sha256:6a660428db2bf94167564c6188bbc5f12a3da8089e0f19412566132f8d92a488",
+      "guarded": false,
+      "id": "pair-first-overflow-precedes-second-pair-bounds",
+      "sha256": "sha256:c3ea60eb1bade6e3b8b4568a70646c6b6e36b2576ef244e3904135a9f7309253"
+    },
+    {
+      "bytes": 7568,
+      "c_sha256": "sha256:1975eead076ddc597416f3f4741cfcf945e3461a960ed7696b1fd0b97e2801a1",
+      "guarded": false,
+      "id": "pair-second-overflow",
+      "sha256": "sha256:b67167372e70f247fef2034b35b1f39252133a65b51344a740d12ba0b284a57b"
+    },
+    {
+      "bytes": 7616,
+      "c_sha256": "sha256:d65bae9e49c674e857cd32a78118ef024040372752856011c8ac22c47006c15f",
+      "guarded": false,
+      "id": "pair-extra-elements-ignored",
+      "sha256": "sha256:8dba5fe1df711781bdcaf8d2aa9095ada5f296b94066ca668eacdf1d2cd18f79"
+    },
+    {
+      "bytes": 7147,
+      "c_sha256": "sha256:e96c9c9bbe0bff27bd3f705eb6b22a231cebebd1a0406220a1f3ca09559d73a2",
+      "guarded": false,
+      "id": "summary-positive",
+      "sha256": "sha256:d9d167fa2184c8985aee71543e03f46556fe39dd1e0eecc47c01b3cfd4342adb"
+    },
+    {
+      "bytes": 7144,
+      "c_sha256": "sha256:10628b2fba011f87b4ad7cbb24faf7fe809292f98d9eda9afed4cc9c579a3104",
+      "guarded": false,
+      "id": "summary-zero",
+      "sha256": "sha256:30816b51b2616fe8bfc2e001f482f4f789d7e71f2941496108a99092ed369b92"
+    },
+    {
+      "bytes": 7043,
+      "c_sha256": "sha256:380b810a29ac1381004e918ca8bb5f8c774040e0655816bf6442cb0950f3658d",
+      "guarded": false,
+      "id": "summary-empty-label",
+      "sha256": "sha256:a61990c22cebf0c7df3df6a1968fc235d7ba2e3c57d7cd9ecbf08f912b05265b"
+    },
+    {
+      "bytes": 7149,
+      "c_sha256": "sha256:dbba387c82c223b9362d209d1810a3eecddcd8ebffc0073cc4d6128e4ebc4b7f",
+      "guarded": false,
+      "id": "summary-unicode",
+      "sha256": "sha256:c01d6da2108cc96022ae8ac533af33bda428edc55acd799d2f41633de78a6bff"
+    },
+    {
+      "bytes": 7232,
+      "c_sha256": "sha256:c34dfad81465bf395460f7c8dcba7f014659df16d1efcb4c97c3b56c2db7f984",
+      "guarded": false,
+      "id": "summary-long-label-preserved",
+      "sha256": "sha256:7adc203f63f921b3cfbf95e03ba1dd64247952c5ab156817395d1f7fcc407540"
+    },
+    {
+      "bytes": 7163,
+      "c_sha256": "sha256:5ddad8c7a7b07665b2e84d9cdef244eb4fa1a660f0952c550134b4f1055ec755",
+      "guarded": false,
+      "id": "summary-overflow",
+      "sha256": "sha256:c6ff34bd9f3e2048d122c14b7c9c545a455face9d61dfe96eebfc120b261656f"
+    },
+    {
+      "bytes": 7167,
+      "c_sha256": "sha256:226348d924a7f311d043b9f107a06a6c0275acc08f81b25f66408b0bb076b587",
+      "guarded": false,
+      "id": "summary-negative-overflow",
+      "sha256": "sha256:6d3ff5e791a3f9bc096eb28e4b4b22083cda9f85035a890fa9e1d5f38b0e5c9a"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:5778e3d31e79eff0a99bfaaa0c44c9531bbba673b8fcd9e5aa0ac2882b7b9e93",
+      "guarded": true,
+      "id": "quota-success",
+      "sha256": "sha256:ba4c86aefcdfeaccaf5885fded1563a1f4b345a7c791401e2d461a72669f98ae"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:1ce23223f06a4a93c9bd898daeb6d4afa1f35aee7b876a1f5f382dd840b6cc6d",
+      "guarded": true,
+      "id": "quota-invalid-amount",
+      "sha256": "sha256:0086e8bfbd6fa26b28448314f08512b67c029fde3dc0962492b261f4152385f1"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:0887f2415c83f084b558222736fb5193280d28799d3081af67e8ae12d3816516",
+      "guarded": true,
+      "id": "quota-invalid-negative-amount",
+      "sha256": "sha256:7c86d8fc5533324fe06371099f470f587d6e1f44bf2e060b91dc8e00d33e2cdc"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:6be12307e41a5bfbeab6fb91ac64a63b502d42f57800d26f38785ae707f1342c",
+      "guarded": true,
+      "id": "quota-insufficient",
+      "sha256": "sha256:2470ef5021c16f7659a0c806cc30dabe9da9be45315af9b0b9dcbfc3a02dd3d7"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:c5b828ee5a1a40dc307c7a416f1ad152b3cbfdab375d9d4bf6c7b8d59be059c5",
+      "guarded": true,
+      "id": "quota-zero-available",
+      "sha256": "sha256:572fbcbf7b467f2eddec6ed70aa3aa9cda25a33d1181d7f5a2a62f97664fa09b"
+    },
+    {
+      "bytes": 15165,
+      "c_sha256": "sha256:8c55573f76b00e7c7299aa53c34a287f45920de763a3b8fa58bb2713747d1133",
+      "guarded": true,
+      "id": "quota-maximum",
+      "sha256": "sha256:679128d73add2e15802a87cef880faf14568293e325deed53ff2a0c4ad32f820"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:ae9a369cb09b9ad3fb023a289723b7a3d7e49da6157b8ef645fff9873bc0a25a",
+      "guarded": true,
+      "id": "quota-exact-exhaustion",
+      "sha256": "sha256:852e16330ea122d6aceb3520aa31be7fd8183d8619e0382e3fcbe9101640263e"
+    },
+    {
+      "bytes": 15165,
+      "c_sha256": "sha256:5f0fe2db179b2abc92487748511e356461e3f610c7cc026ec63157c4562504fd",
+      "guarded": true,
+      "id": "quota-minimum-amount-is-rejected",
+      "sha256": "sha256:58f467cf4a8255f6bd832a4ea199ce03fad50b1dad2b8dd812e5e42ffa96030b"
+    },
+    {
+      "bytes": 15183,
+      "c_sha256": "sha256:6136cf636f8a3242ae0f8820c82a5698f2b9ac38bac53e39b472ac0ef8c84c19",
+      "guarded": true,
+      "id": "quota-maximum-exact-exhaustion",
+      "sha256": "sha256:15fe43b870db3ef2802222c083ab637bbaa643d54662f7794bc0df62d9290175"
+    },
+    {
+      "bytes": 15147,
+      "c_sha256": "sha256:4c05080e19c7ab5ca302e3cd12bd3b473105739313064f2849acb4ac17ce1372",
+      "guarded": true,
+      "id": "quota-precondition-fails",
+      "sha256": "sha256:1e7e6d4e7781448623aebf785f3f679211a668871eb61c3cda7d98c01882be18"
+    },
+    {
+      "bytes": 7559,
+      "c_sha256": "sha256:df9a89bd1b51d7c2b4aa45abdddccee3fced430e0aafa6080e8335786c5cba02",
+      "guarded": true,
+      "id": "pair-totals-normal",
+      "sha256": "sha256:7a3dbabecbd48d4a5b2ad36ebafd69b5eab5b3ed192ed0861318ca2cc3a095c2"
+    },
+    {
+      "bytes": 7559,
+      "c_sha256": "sha256:9b374d87e77a4f9a520401bf793c7971f867ff8f7568f7f453fe54d459a4aebe",
+      "guarded": true,
+      "id": "pair-totals-negative",
+      "sha256": "sha256:d58703436b5732a00f545413ccf34774ae1c3129b0d11db70653c327116b3443"
+    },
+    {
+      "bytes": 7836,
+      "c_sha256": "sha256:89e3dfdfe85739476133f4f532b235c71621de29f0f60ea09b68e94d66c900b1",
+      "guarded": true,
+      "id": "pair-totals-short-list",
+      "sha256": "sha256:41c11e448def51d7efe4d031a7b688e7cc711546fe5ce4c5e74a02cab00ce83d"
+    },
+    {
+      "bytes": 7413,
+      "c_sha256": "sha256:3f9daa50a602af1f7da97a703c92238da19ea3753aa8aabf6a340675763a08e9",
+      "guarded": true,
+      "id": "pair-totals-empty-list",
+      "sha256": "sha256:1246a29a5963e5519a9752347760c15e9570a3ba1c772f627fe726e4ce7270e3"
+    },
+    {
+      "bytes": 7568,
+      "c_sha256": "sha256:b27526caa3f3045e615a986d05a8a3e6686d342471c038a628a81c31800218d6",
+      "guarded": true,
+      "id": "pair-totals-overflow-left-first",
+      "sha256": "sha256:5d18b2303707621c19d2d487331863faa8f9c56589ca959fefb0bbfb42b68333"
+    },
+    {
+      "bytes": 7761,
+      "c_sha256": "sha256:6a660428db2bf94167564c6188bbc5f12a3da8089e0f19412566132f8d92a488",
+      "guarded": true,
+      "id": "pair-first-overflow-precedes-second-pair-bounds",
+      "sha256": "sha256:c3ea60eb1bade6e3b8b4568a70646c6b6e36b2576ef244e3904135a9f7309253"
+    },
+    {
+      "bytes": 7568,
+      "c_sha256": "sha256:1975eead076ddc597416f3f4741cfcf945e3461a960ed7696b1fd0b97e2801a1",
+      "guarded": true,
+      "id": "pair-second-overflow",
+      "sha256": "sha256:b67167372e70f247fef2034b35b1f39252133a65b51344a740d12ba0b284a57b"
+    },
+    {
+      "bytes": 7616,
+      "c_sha256": "sha256:d65bae9e49c674e857cd32a78118ef024040372752856011c8ac22c47006c15f",
+      "guarded": true,
+      "id": "pair-extra-elements-ignored",
+      "sha256": "sha256:8dba5fe1df711781bdcaf8d2aa9095ada5f296b94066ca668eacdf1d2cd18f79"
+    },
+    {
+      "bytes": 7147,
+      "c_sha256": "sha256:e96c9c9bbe0bff27bd3f705eb6b22a231cebebd1a0406220a1f3ca09559d73a2",
+      "guarded": true,
+      "id": "summary-positive",
+      "sha256": "sha256:d9d167fa2184c8985aee71543e03f46556fe39dd1e0eecc47c01b3cfd4342adb"
+    },
+    {
+      "bytes": 7144,
+      "c_sha256": "sha256:10628b2fba011f87b4ad7cbb24faf7fe809292f98d9eda9afed4cc9c579a3104",
+      "guarded": true,
+      "id": "summary-zero",
+      "sha256": "sha256:30816b51b2616fe8bfc2e001f482f4f789d7e71f2941496108a99092ed369b92"
+    },
+    {
+      "bytes": 7043,
+      "c_sha256": "sha256:380b810a29ac1381004e918ca8bb5f8c774040e0655816bf6442cb0950f3658d",
+      "guarded": true,
+      "id": "summary-empty-label",
+      "sha256": "sha256:a61990c22cebf0c7df3df6a1968fc235d7ba2e3c57d7cd9ecbf08f912b05265b"
+    },
+    {
+      "bytes": 7149,
+      "c_sha256": "sha256:dbba387c82c223b9362d209d1810a3eecddcd8ebffc0073cc4d6128e4ebc4b7f",
+      "guarded": true,
+      "id": "summary-unicode",
+      "sha256": "sha256:c01d6da2108cc96022ae8ac533af33bda428edc55acd799d2f41633de78a6bff"
+    },
+    {
+      "bytes": 7232,
+      "c_sha256": "sha256:c34dfad81465bf395460f7c8dcba7f014659df16d1efcb4c97c3b56c2db7f984",
+      "guarded": true,
+      "id": "summary-long-label-preserved",
+      "sha256": "sha256:7adc203f63f921b3cfbf95e03ba1dd64247952c5ab156817395d1f7fcc407540"
+    },
+    {
+      "bytes": 7163,
+      "c_sha256": "sha256:5ddad8c7a7b07665b2e84d9cdef244eb4fa1a660f0952c550134b4f1055ec755",
+      "guarded": true,
+      "id": "summary-overflow",
+      "sha256": "sha256:c6ff34bd9f3e2048d122c14b7c9c545a455face9d61dfe96eebfc120b261656f"
+    },
+    {
+      "bytes": 7167,
+      "c_sha256": "sha256:226348d924a7f311d043b9f107a06a6c0275acc08f81b25f66408b0bb076b587",
+      "guarded": true,
+      "id": "summary-negative-overflow",
+      "sha256": "sha256:6d3ff5e791a3f9bc096eb28e4b4b22083cda9f85035a890fa9e1d5f38b0e5c9a"
+    }
+  ],
+  "build_scope": "Warm compiler and dependency caches; includes source checking, C emission and C/Wasm compilation of 25 input-bound artifacts. Does not include building the Rust host executable. Different scope from cold Go/Rust build measurements.",
+  "compiler": "Homebrew clang version 21.1.8",
+  "decision": "narrow",
+  "format_version": "0.1.0",
+  "host": "wasmi 2.0.0 portable-dispatch",
+  "kind": "candidate_runtime_smoke",
+  "measurement_scope": "Fresh process for same 25 public seed cases as Go/Rust; includes JSON IO, reading invocation artifacts, Wasm validation/translation/instantiation and computation. C compilation excluded. Artifacts specialize each input; these are smoke costs, not comparable native function latency or a performance ranking.",
+  "measurements": [
+    {
+      "artifact_bytes": 183687,
+      "build_ns": 1887373416,
+      "case_count": 25,
+      "contracts": "disabled",
+      "language": "pactern",
+      "median_ns": 5048208,
+      "outcomes": [
+        {
+          "id": "quota-success",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "1"
+            }
+          }
+        },
+        {
+          "id": "quota-invalid-amount",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-invalid-negative-amount",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-insufficient",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InsufficientQuota",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-zero-available",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InsufficientQuota",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-maximum",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "9223372036854775806"
+            }
+          }
+        },
+        {
+          "id": "quota-exact-exhaustion",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "id": "quota-minimum-amount-is-rejected",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-maximum-exact-exhaustion",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "id": "quota-precondition-fails",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InsufficientQuota",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "pair-totals-normal",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "3",
+              "7"
+            ]
+          }
+        },
+        {
+          "id": "pair-totals-negative",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "-3",
+              "-3"
+            ]
+          }
+        },
+        {
+          "id": "pair-totals-short-list",
+          "outcome": {
+            "category": "IndexOutOfBounds",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-totals-empty-list",
+          "outcome": {
+            "category": "IndexOutOfBounds",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-totals-overflow-left-first",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-first-overflow-precedes-second-pair-bounds",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-second-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-extra-elements-ignored",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "3",
+              "7"
+            ]
+          }
+        },
+        {
+          "id": "summary-positive",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": true,
+              "label": "storage",
+              "total": "5"
+            }
+          }
+        },
+        {
+          "id": "summary-zero",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "zero",
+              "total": "0"
+            }
+          }
+        },
+        {
+          "id": "summary-empty-label",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "",
+              "total": "0"
+            }
+          }
+        },
+        {
+          "id": "summary-unicode",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "café ☕",
+              "total": "-1"
+            }
+          }
+        },
+        {
+          "id": "summary-long-label-preserved",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": true,
+              "label": "label-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "total": "1"
+            }
+          }
+        },
+        {
+          "id": "summary-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "summary-negative-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        }
+      ],
+      "process_samples_ns": [
+        5185791,
+        5048208,
+        5089459,
+        4989250,
+        4994250
+      ],
+      "sample_variance_ns2": 6537300468.299999
+    },
+    {
+      "artifact_bytes": 262467,
+      "build_ns": 1746268500,
+      "case_count": 25,
+      "contracts": "enabled",
+      "language": "pactern",
+      "median_ns": 5805750,
+      "outcomes": [
+        {
+          "id": "quota-success",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "1"
+            }
+          }
+        },
+        {
+          "id": "quota-invalid-amount",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-invalid-negative-amount",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-insufficient",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InsufficientQuota",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-zero-available",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InsufficientQuota",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-maximum",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "9223372036854775806"
+            }
+          }
+        },
+        {
+          "id": "quota-exact-exhaustion",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "id": "quota-minimum-amount-is-rejected",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "error": "InvalidAmount",
+              "tag": "Err"
+            }
+          }
+        },
+        {
+          "id": "quota-maximum-exact-exhaustion",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "tag": "Ok",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "id": "quota-precondition-fails",
+          "outcome": {
+            "category": "Precondition",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-totals-normal",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "3",
+              "7"
+            ]
+          }
+        },
+        {
+          "id": "pair-totals-negative",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "-3",
+              "-3"
+            ]
+          }
+        },
+        {
+          "id": "pair-totals-short-list",
+          "outcome": {
+            "category": "IndexOutOfBounds",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-totals-empty-list",
+          "outcome": {
+            "category": "IndexOutOfBounds",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-totals-overflow-left-first",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-first-overflow-precedes-second-pair-bounds",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-second-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "pair-extra-elements-ignored",
+          "outcome": {
+            "kind": "return",
+            "value": [
+              "3",
+              "7"
+            ]
+          }
+        },
+        {
+          "id": "summary-positive",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": true,
+              "label": "storage",
+              "total": "5"
+            }
+          }
+        },
+        {
+          "id": "summary-zero",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "zero",
+              "total": "0"
+            }
+          }
+        },
+        {
+          "id": "summary-empty-label",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "",
+              "total": "0"
+            }
+          }
+        },
+        {
+          "id": "summary-unicode",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": false,
+              "label": "café ☕",
+              "total": "-1"
+            }
+          }
+        },
+        {
+          "id": "summary-long-label-preserved",
+          "outcome": {
+            "kind": "return",
+            "value": {
+              "active": true,
+              "label": "label-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "total": "1"
+            }
+          }
+        },
+        {
+          "id": "summary-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        },
+        {
+          "id": "summary-negative-overflow",
+          "outcome": {
+            "category": "Overflow",
+            "cause": null,
+            "kind": "trap"
+          }
+        }
+      ],
+      "process_samples_ns": [
+        6000291,
+        5782625,
+        5805750,
+        5829833,
+        5765250
+      ],
+      "sample_variance_ns2": 8949067298.7
+    }
+  ],
+  "os": "macos",
+  "samples": 5,
+  "source_hashes": {
+    "Cargo.lock": "sha256:3424701cd63845234927ab9b682cc6ab2bdc05a351e1b7031d079c2a6162fabf",
+    "baselines/tasks.json": "sha256:409070fe7fe122153d3b34ad5f8f8e469557775044003eb537680d9e1e0c1877",
+    "crates/pactern/examples/runtime_benchmark.rs": "sha256:7c623289326e2f3b737b00d5a818160d3aed196d360bc7fecc11216061ba11d8",
+    "crates/pactern/src/backend.rs": "sha256:c138ab931074e755b32cebfa5b87457ee980632240b5da95b04388a1513a98d2",
+    "crates/pactern/src/backend_quota.rs": "sha256:9c0ce0c9aa759ce0d8005981b2caa456a597a5d6c0783efad5765a00c768c188",
+    "crates/pactern/src/core.rs": "sha256:112e76a3983f9697997120d60d29890afdd132230b8925d796b653d362126e5b",
+    "crates/pactern/src/host.rs": "sha256:883e3d8f4a20921d945b0353f9996919b769f054545cc179a72300744c2b5f41",
+    "crates/pactern/src/interpreter.rs": "sha256:a58bf530a49d3e4dcbd3f030386d1193d00c3b01d802012f77cefd87618b199f",
+    "fixtures/conformance/contracts/quota.pact.ptn": "sha256:27931c882d099fc260d89f6329a1422f0d39d9c6721389203ee3f4afaa3fdac6",
+    "fixtures/conformance/manifest.json": "sha256:0ef81058bdde3556652815dd3b9c892ddccac757f9c675a44584506d5ad9a5b1",
+    "fixtures/conformance/src/pair_totals.ptn": "sha256:e33311041a1a33b686f81898fdc9c4360b0ee414736c8e8dae3a675169f05e27",
+    "fixtures/conformance/src/quota.ptn": "sha256:ac4e9988638e71f1379259132024e62cc571695bbaf116f182293307ae77cdb2",
+    "fixtures/conformance/src/summarize.ptn": "sha256:fc6237cf758244964759f677ba02aafb7c5111d660b5efe1fbb2e303a012e438",
+    "runtime/pactern.c": "sha256:9db5869c3e7389cec392a6758ab42fad159352d277ff974ca56ab748ceb7d70e",
+    "runtime/quota.c": "sha256:0598e9b8333801b2d7071be4d356573d0634073661ff7a6055e730b0fa618128"
+  },
+  "tool_version": "0.1.0",
+  "unix_time_seconds": 1792331993,
+  "warmups": 1
+}

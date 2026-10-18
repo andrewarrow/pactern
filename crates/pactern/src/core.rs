@@ -3,7 +3,8 @@
 //! [`lower`] checks parser-produced files before lowering. Programs own their
 //! result-local symbol table and expose only shared access: consumers cannot
 //! detach annotations from the checked program. This is a generic (not
-//! monomorphized) IR. Effects are retained as declarations, not certified.
+//! monomorphized) IR. Effect bounds and handle ownership pass static checking;
+//! declared effects never confer host authority.
 //!
 //! ```
 //! use pactern::{core, resolution::ParsedFile, syntax::{parse, FileKind, SourceFile}};
@@ -14,7 +15,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::resolution::{FileId, Location, ParsedFile, Resolution, SymbolId, SymbolKind};
 use crate::syntax::{self as ast, Span};
@@ -35,6 +36,7 @@ pub struct Program {
     resolution: Resolution,
     declarations: Vec<Declaration>,
     symbol_types: BTreeMap<SymbolId, ValueType>,
+    borrowed_parameters: BTreeSet<SymbolId>,
 }
 impl Program {
     pub fn resolution(&self) -> &Resolution {
@@ -45,6 +47,11 @@ impl Program {
     }
     pub fn symbol_types(&self) -> &BTreeMap<SymbolId, ValueType> {
         &self.symbol_types
+    }
+    /// Registered handle parameters whose authority is borrowed for the call.
+    /// Other handle parameters and local bindings own their moved value.
+    pub fn borrowed_parameters(&self) -> &BTreeSet<SymbolId> {
+        &self.borrowed_parameters
     }
 }
 
@@ -60,8 +67,8 @@ pub enum DeclarationKind {
         type_parameters: Vec<SymbolId>,
         parameters: Vec<SymbolId>,
         result: ValueType,
-        /// Omission and an explicit empty bound remain distinct. Effect checking
-        /// belongs to a later phase; these names do not confer authority.
+        /// Omission and an explicit empty bound remain distinct. The frontend
+        /// validates these bounds; the names do not confer authority.
         effects: Option<Vec<String>>,
         body: Block,
     },
@@ -238,8 +245,14 @@ pub fn lower(files: &[ParsedFile]) -> Result<Program> {
     }
     let builder = Builder::new(&checked, files)?;
     let mut declarations = vec![];
+    let mut borrowed_parameters = BTreeSet::new();
     for (i, file) in files.iter().enumerate() {
         for declaration in &file.tree.declarations {
+            if let ast::DeclarationKind::Function(function) = &declaration.kind {
+                for parameter in function.parameters.iter().filter(|p| p.borrowed) {
+                    borrowed_parameters.insert(builder.decl(FileId(i), &parameter.name)?);
+                }
+            }
             declarations.push(builder.declaration(FileId(i), declaration)?);
         }
     }
@@ -247,6 +260,7 @@ pub fn lower(files: &[ParsedFile]) -> Result<Program> {
         resolution: checked.resolution,
         symbol_types: checked.symbol_types,
         declarations,
+        borrowed_parameters,
     })
 }
 
@@ -540,7 +554,12 @@ impl<'a> Builder<'a> {
             .map(|a| match a {
                 ast::Argument::Expression(e) => self.expr(f, e),
                 ast::Argument::Borrow(b) => {
-                    self.required(None, f, b.span, "borrow survived value checking")
+                    let symbol = self.reference(f, b.value.span)?;
+                    Ok(Expression {
+                        origin: self.origin(f, b.span),
+                        ty: self.checked.symbol_types[&symbol].clone(),
+                        kind: ExpressionKind::Read(symbol),
+                    })
                 }
             })
             .collect()
@@ -740,7 +759,7 @@ impl<'a> Builder<'a> {
         })
     }
 }
-pub(crate) fn substitute(ty: &ValueType, args: &BTreeMap<SymbolId, ValueType>) -> ValueType {
+pub fn substitute(ty: &ValueType, args: &BTreeMap<SymbolId, ValueType>) -> ValueType {
     match ty {
         ValueType::Parameter(id) => args.get(id).cloned().unwrap_or_else(|| ty.clone()),
         ValueType::List(t) => ValueType::List(Box::new(substitute(t, args))),

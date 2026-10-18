@@ -215,3 +215,17 @@ fn structured_control_flow_and_short_circuiting_remain_explicit() {
         }
     ));
 }
+
+#[test]
+fn core_preserves_borrowed_handle_modes_for_cleanup() {
+    let source = SourceFile::new(
+        "src/main.ptn",
+        "module main; fn peek(t: borrow host::quota::Txn)->I64 effects {db.read}{return host::quota::read(borrow t);} fn own(t: host::quota::Txn)->Unit {let next=t;}",
+    );
+    let tree = parse(&source, FileKind::Implementation).unwrap();
+    let program = core::lower(&[ParsedFile::new(source.name(), tree)]).unwrap();
+    assert_eq!(program.borrowed_parameters().len(), 1);
+    let parameter = *program.borrowed_parameters().iter().next().unwrap();
+    let parent = program.resolution().symbols[parameter.0].parent.unwrap();
+    assert_eq!(program.resolution().symbols[parent.0].name, "peek");
+}

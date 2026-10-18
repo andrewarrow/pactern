@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pactern:protocol:0.1.0:semantic-query-request",
+  "title": "Pactern 0.1.0 semantic query request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "kind",
+    "source_revision",
+    "query"
+  ],
+  "properties": {
+    "protocol_version": {
+      "const": "0.1.0"
+    },
+    "kind": {
+      "const": "query_request"
+    },
+    "source_revision": {
+      "$ref": "#/$defs/digest"
+    },
+    "query": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "selector"
+          ],
+          "properties": {
+            "operation": {
+              "const": "inspect"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "selector"
+          ],
+          "properties": {
+            "operation": {
+              "const": "callers"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "selectors"
+          ],
+          "properties": {
+            "operation": {
+              "const": "impact"
+            },
+            "selectors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "selectors",
+            "tests"
+          ],
+          "properties": {
+            "operation": {
+              "const": "affected_tests"
+            },
+            "selectors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "tests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/test_dependency"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "minLength": 71,
+      "maxLength": 71
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^(sym|pact)_[0-9a-f]{32}(?![\\s\\S])"
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "test_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "test",
+        "declarations",
+        "complete"
+      ],
+      "properties": {
+        "test": {
+          "type": "string",
+          "minLength": 1
+        },
+        "declarations": {
+          "$ref": "#/$defs/ids"
+        },
+        "complete": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

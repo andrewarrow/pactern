@@ -1,7 +1,7 @@
 # Pactern core language 0.1.0
 
-Status: draft specification, revision 1. This defines intended behavior; no
-compiler is implemented. The [grammar](grammar.ebnf) defines syntax, this document
+Status: draft specification, revision 2. This defines intended behavior; the
+experimental compiler implements the subset recorded in MILESTONES.md. The [grammar](grammar.ebnf) defines syntax, this document
 defines its meaning, and [examples](examples.md) resolve representative edge cases.
 The version applies to the whole [specification bundle](README.md).
 
@@ -35,6 +35,15 @@ Comments are `//` to end of line or non-nesting `/* ... */`. Unterminated commen
 and strings are errors. Identifiers use ASCII letters or `_`, followed by ASCII
 letters, digits, or `_`; the bare `_` is a pattern wildcard. Names are case-sensitive.
 Grammar keywords are reserved, including `result`.
+
+Each implementation (`.ptn`) and contract (`.pact.ptn`) file is limited to 1,000
+physical lines, counting blank lines and comments. LF, CRLF, and lone CR each
+terminate one line. A final terminator does not add an extra empty line; an
+unterminated final line counts. The compiler rejects the first excess line with
+`PTN_LEX_LINE_LIMIT`. Split growing implementations into imported modules and
+place each module's pacts in its corresponding contract file. Formatting must
+also fit this limit; it reports an error before writing an oversized result.
+This rule limits file size, not module coupling or architectural complexity.
 
 Every file starts with `module path;`. A package has one implementation file
 `src/<path>.ptn` per module, replacing `::` with directory separators. Its optional

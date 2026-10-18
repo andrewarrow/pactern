@@ -60,7 +60,7 @@ impl SourceSnapshot {
             ));
         }
         for (key, value) in [
-            ("profile", "source-only-frontend/1"),
+            ("profile", "source-frontend/2-effects-lines"),
             ("language", crate::LANGUAGE_VERSION),
             ("protocol", crate::PROTOCOL_VERSION),
             ("tool-version", crate::TOOL_VERSION),

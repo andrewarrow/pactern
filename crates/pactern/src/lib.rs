@@ -1,9 +1,9 @@
 //! Shared entry points for the Pactern toolchain.
 //!
-//! Metadata, syntax, formatting, source-bound diagnostics, name resolution,
-//! core value typing, typed IR, and pure interpretation APIs are available.
-//! The CLI checks and formats source-only packages; other project commands
-//! remain unavailable.
+//! Shared frontend, effects/ownership, typed IR, interpreter, C/Wasm backend,
+//! narrow SMT verification, evidence, semantic editing, and scoped host APIs.
+//! The CLI adapts project I/O; the metadata-only `execute` dispatcher remains
+//! separate from those filesystem and process operations.
 //!
 //! ```
 //! use pactern::{execute, Command, PROTOCOL_VERSION};
@@ -18,13 +18,23 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 
+pub mod acceptance;
+pub mod backend;
 pub mod core;
+pub mod editor;
+pub mod effects;
+pub mod evidence;
 pub mod formatting;
 pub mod frontend;
+pub mod host;
 pub mod interpreter;
+pub mod pacts;
 pub mod resolution;
+pub mod semantic;
 pub mod syntax;
 pub mod typing;
+pub mod verification;
+pub mod workspace;
 
 pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CLI_VERSION: &str = "0.1.0";
@@ -91,7 +101,7 @@ pub fn version_info() -> VersionInfo {
 pub struct Diagnostic {
     protocol_version: &'static str,
     kind: &'static str,
-    code: &'static str,
+    code: String,
     severity: &'static str,
     phase: &'static str,
     message: String,
@@ -126,6 +136,17 @@ pub struct RelatedDiagnostic {
 }
 
 impl Diagnostic {
+    pub fn operation(
+        code: impl Into<String>,
+        phase: &'static str,
+        message: impl Into<String>,
+    ) -> Self {
+        let mut diagnostic = Self::new("PTN_TOOL_OPERATION", message);
+        diagnostic.code = code.into();
+        diagnostic.phase = phase;
+        diagnostic
+    }
+
     pub fn invalid_arguments(message: impl Into<String>) -> Self {
         Self::new("PTN_TOOL_INVALID_ARGUMENTS", message)
     }
@@ -162,7 +183,7 @@ impl Diagnostic {
     }
 
     pub fn code(&self) -> &str {
-        self.code
+        &self.code
     }
 
     pub fn message(&self) -> &str {
@@ -185,7 +206,7 @@ impl Diagnostic {
         Self {
             protocol_version: PROTOCOL_VERSION,
             kind: "diagnostic",
-            code,
+            code: code.into(),
             severity: "error",
             phase: "tool",
             message: message.into(),

@@ -167,7 +167,7 @@ fn invalid_utf8_argument_is_reported_as_json_diagnostic() {
 }
 
 #[test]
-fn unsupported_commands_accept_unicode_paths_without_touching_project() {
+fn invalid_project_commands_accept_unicode_paths_without_touching_project() {
     let temp = TempDir::new();
     let project = temp.path().join("pactern-🧪");
     fs::create_dir_all(project.join("nested")).unwrap();
@@ -189,14 +189,14 @@ fn unsupported_commands_accept_unicode_paths_without_touching_project() {
         assert_eq!(output.status.code(), Some(1), "args: {args:?}");
         assert!(output.stderr.is_empty());
         let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-        assert_eq!(value["code"], "PTN_TOOL_NOT_IMPLEMENTED", "args: {args:?}");
+        assert_eq!(value["code"], "PTN_TOOL_NO_SOURCES", "args: {args:?}");
     }
 
     for path in [&unicode_change, &missing_change] {
         let mut impact_args: Vec<OsString> =
             vec!["--json".into(), "impact".into(), "--change".into()];
         impact_args.push(path.as_os_str().to_owned());
-        assert_not_implemented(run_os_in(&project, impact_args));
+        assert_project_error(run_os_in(&project, impact_args));
 
         for dry_run in [false, true] {
             let mut apply_args: Vec<OsString> = vec!["--json".into(), "apply".into()];
@@ -204,7 +204,7 @@ fn unsupported_commands_accept_unicode_paths_without_touching_project() {
             if dry_run {
                 apply_args.push("--dry-run".into());
             }
-            assert_not_implemented(run_os_in(&project, apply_args));
+            assert_project_error(run_os_in(&project, apply_args));
         }
     }
     assert_eq!(tree_snapshot(&project), before);
@@ -376,11 +376,14 @@ fn run_os_in(directory: &Path, args: Vec<OsString>) -> Output {
         .unwrap()
 }
 
-fn assert_not_implemented(output: Output) {
+fn assert_project_error(output: Output) {
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stderr.is_empty());
     let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(value["code"], "PTN_TOOL_NOT_IMPLEMENTED");
+    assert!(matches!(
+        value["code"].as_str(),
+        Some("PTN_CHANGE_INVALID_REQUEST" | "PTN_TOOL_OPERATION")
+    ));
 }
 
 fn tree_snapshot(root: &Path) -> Vec<(PathBuf, Option<Vec<u8>>)> {
@@ -419,7 +422,7 @@ impl TempDir {
             NEXT.fetch_add(1, Ordering::Relaxed),
         ));
         fs::create_dir(&path).unwrap();
-        Self(path)
+        Self(fs::canonicalize(path).unwrap())
     }
 
     fn path(&self) -> &Path {
@@ -430,5 +433,436 @@ impl TempDir {
 impl Drop for TempDir {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+#[test]
+fn line_limits_reject_input_and_formatter_expansion_without_writes() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let path = temp.path().join("src/main.ptn");
+    let too_long = format!("module main;\n{}// excess", "// é\r\n".repeat(999));
+    fs::write(&path, &too_long).unwrap();
+    let output = run_in(temp.path(), &["check", "--json"]);
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(result["code"], "PTN_LEX_LINE_LIMIT");
+    assert_eq!(
+        result["span"]["start_byte"].as_u64().unwrap() as usize,
+        too_long.len() - 9
+    );
+    let dense = format!("module main; fn main()->Unit{{{}}}", "();".repeat(1000));
+    fs::write(&path, &dense).unwrap();
+    let before = tree_snapshot(temp.path());
+    let output = run_in(temp.path(), &["fmt", "--json"]);
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["code"], "PTN_TOOL_FORMAT_LINE_LIMIT");
+    assert_eq!(tree_snapshot(temp.path()), before);
+}
+
+#[test]
+fn cli_compiles_runs_verifies_and_executes_seeded_properties() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    fs::create_dir(temp.path().join("contracts")).unwrap();
+    fs::write(
+        temp.path().join("src/main.ptn"),
+        "module main; pub fn main(x:I64)->I64{return x+1;}",
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("contracts/main.pact.ptn"),
+        "module main; pact p for main {requires x>=0 && x<100;ensures result==x+1;}",
+    )
+    .unwrap();
+    for args in [
+        vec!["run", "--args", "[\"4\"]", "--json"],
+        vec!["build", "--args", "[\"4\"]", "--json"],
+        vec!["verify", "--json"],
+        vec!["test", "--cases", "3", "--seed", "9", "--json"],
+    ] {
+        let output = run_in(temp.path(), &args);
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+        if args[0] == "run" {
+            assert_eq!(value["outcome"]["value"], "5");
+        }
+        if args[0] == "build" {
+            let guards = value["guard_map"].as_array().unwrap();
+            assert_eq!(guards.len(), 2);
+            assert!(
+                guards
+                    .iter()
+                    .all(|guard| guard["artifact_hash"] == value["artifact_hash"])
+            );
+        }
+    }
+    assert!(
+        fs::read(temp.path().join("target/pactern.wasm"))
+            .unwrap()
+            .starts_with(b"\0asm")
+    );
+    let output = run_in(temp.path(), &["run", "--args", "[\"-1\"]", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["outcome"]["trap"], "Precondition");
+    let output = run_in(
+        temp.path(),
+        &["run", "--args", "[9007199254740993]", "--json"],
+    );
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn managed_cli_repairs_defect_and_rejects_stale_or_unproved_changes() {
+    let temp = TempDir::new();
+    let project = temp.path().join("candidate");
+    fs::create_dir_all(project.join("src")).unwrap();
+    fs::create_dir(project.join("contracts")).unwrap();
+    fs::write(
+        project.join("src/main.ptn"),
+        "module main; pub fn main(x:I64)->I64{return x+2;}",
+    )
+    .unwrap();
+    fs::write(
+        project.join("contracts/main.pact.ptn"),
+        "module main; pact p for main {requires x>=0 && x<100;ensures result==x+1;}",
+    )
+    .unwrap();
+    let store = temp.path().join("store");
+    let baseline = temp.path().join("baseline.json");
+    let store = store.to_str().unwrap();
+    let baseline = baseline.to_str().unwrap();
+    let output = run_in(
+        &project,
+        &["init", "--store", store, "--baseline", baseline, "--json"],
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let init: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let target = init["declarations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["name"] == "main")
+        .unwrap();
+    let request = serde_json::json!({"protocol_version":"0.1.0","kind":"change_request","request_id":"repair-1","transaction":"implementation","base_revision":init["source_revision"],"expected_policy_baseline":init["policy_baseline"],"operations":[{"op":"replace_function_body","target":{"symbol_id":target["id"],"expected_hash":target["declaration_hash"]},"body":"{ return x+1; }"}]});
+    let change = project.join("change.json");
+    fs::write(&change, serde_json::to_vec(&request).unwrap()).unwrap();
+    let change = change.to_str().unwrap();
+    let before = fs::read(Path::new(store).join("workspace.json")).unwrap();
+    let output = run_in(
+        &project,
+        &[
+            "apply",
+            change,
+            "--dry-run",
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--json",
+        ],
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert_eq!(
+        fs::read(Path::new(store).join("workspace.json")).unwrap(),
+        before
+    );
+    let output = run_in(
+        &project,
+        &[
+            "apply",
+            change,
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--json",
+        ],
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let committed = fs::read(Path::new(store).join("workspace.json")).unwrap();
+    assert_ne!(committed, before);
+    let output = run_in(
+        &project,
+        &[
+            "run",
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--args",
+            "[\"4\"]",
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0));
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["outcome"]["value"], "5");
+    let mut stale = request.clone();
+    stale["request_id"] = Value::String("stale-2".into());
+    fs::write(change, serde_json::to_vec(&stale).unwrap()).unwrap();
+    let output = run_in(
+        &project,
+        &[
+            "apply",
+            change,
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(
+        fs::read(Path::new(store).join("workspace.json")).unwrap(),
+        committed
+    );
+    let output = run_in(
+        &project,
+        &[
+            "inspect",
+            "main::main",
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--json",
+        ],
+    );
+    let inspect: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let mut bad = request;
+    bad["request_id"] = Value::String("bad-3".into());
+    bad["base_revision"] = inspect["source_revision"].clone();
+    bad["operations"][0]["target"]["expected_hash"] = inspect["result"]["declaration_hash"].clone();
+    bad["operations"][0]["body"] = Value::String("{return x+2;}".into());
+    fs::write(change, serde_json::to_vec(&bad).unwrap()).unwrap();
+    let output = run_in(
+        &project,
+        &[
+            "apply",
+            change,
+            "--store",
+            store,
+            "--baseline",
+            baseline,
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["code"], "PTN_POLICY_REQUIRED_PROOF");
+    assert_eq!(
+        fs::read(Path::new(store).join("workspace.json")).unwrap(),
+        committed
+    );
+}
+
+#[test]
+fn editor_cli_reports_diagnostics_and_resolves_declarations() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let path = temp.path().join("src/main.ptn");
+    let text = "module main; fn value()->I64{return 1;} fn main()->I64{return value();}";
+    fs::write(&path, text).unwrap();
+    let byte = text.rfind("value()").unwrap().to_string();
+    let output = run_in(
+        temp.path(),
+        &[
+            "editor",
+            "--path",
+            "src/main.ptn",
+            "--byte",
+            &byte,
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0));
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["result"]["start_byte"], text.find("value()").unwrap());
+    fs::write(&path, "module main; fn main()->I64{return false;}").unwrap();
+    let output = run_in(temp.path(), &["editor", "--json"]);
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["result"][0]["code"], "PTN_TYPE_MISMATCH");
+    assert_eq!(value["result"][0]["range"]["start"]["line"], 0);
+}
+
+#[test]
+fn variant_arguments_are_exact_and_custom_err_round_trips() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let source = temp.path().join("src/main.ptn");
+    fs::write(
+        &source,
+        "module main; pub enum E { Err(Unit), Empty } pub fn main(x:E)->E{return x;}",
+    )
+    .unwrap();
+    let output = run_in(
+        temp.path(),
+        &[
+            "run",
+            "--args",
+            "[{\"tag\":\"Err\",\"value\":null}]",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        value["outcome"]["value"],
+        serde_json::json!({"tag":"Err","value":null})
+    );
+    for args in [
+        "[{\"tag\":\"Err\"}]",
+        "[{\"tag\":\"Err\",\"error\":null}]",
+        "[{\"tag\":\"Empty\",\"value\":null}]",
+        "[{\"tag\":\"Err\",\"value\":null,\"extra\":true}]",
+        "[{\"tag\":\"Empty\",\"tag\":\"Empty\"}]",
+    ] {
+        let output = run_in(temp.path(), &["run", "--args", args, "--json"]);
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "{args}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    fs::write(
+        &source,
+        "module main; pub fn main(x:Option<Unit>)->Option<Unit>{return x;}",
+    )
+    .unwrap();
+    for args in [
+        "[\"Some\"]",
+        "[{\"tag\":\"Some\"}]",
+        "[{\"tag\":\"None\",\"value\":null}]",
+    ] {
+        assert_eq!(
+            run_in(temp.path(), &["run", "--args", args, "--json"])
+                .status
+                .code(),
+            Some(2)
+        );
+    }
+    let output = run_in(
+        temp.path(),
+        &[
+            "run",
+            "--args",
+            "[{\"tag\":\"Some\",\"value\":null}]",
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0));
+}
+
+#[test]
+fn artifact_output_cannot_alias_its_sidecar_or_overwrite_sources() {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    let source = temp.path().join("src/main.ptn");
+    let content = "module main; pub fn main()->I64{return 42;}";
+    fs::write(&source, content).unwrap();
+    for output in ["artifact.c", "artifact.C", "src/main.ptn"] {
+        let result = run_in(temp.path(), &["build", "--output", output, "--json"]);
+        assert_eq!(
+            result.status.code(),
+            Some(2),
+            "{}",
+            String::from_utf8_lossy(&result.stdout)
+        );
+        assert_eq!(fs::read_to_string(&source).unwrap(), content);
+    }
+    assert!(!temp.path().join("artifact.c").exists());
+    let result = run_in(temp.path(), &["test", "--cases", "0", "--json"]);
+    assert!(!result.status.success());
+}
+
+#[test]
+fn artifact_output_cannot_overwrite_trusted_baseline_or_managed_store() {
+    let temp = TempDir::new();
+    let project = temp.path().join("candidate");
+    fs::create_dir_all(project.join("src")).unwrap();
+    fs::write(
+        project.join("src/main.ptn"),
+        "module main; pub fn main()->I64{return 42;}",
+    )
+    .unwrap();
+    let store = temp.path().join("store");
+    let baseline = temp.path().join("baseline.json");
+    let initialized = run_in(
+        &project,
+        &[
+            "init",
+            "--store",
+            store.to_str().unwrap(),
+            "--baseline",
+            baseline.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert!(
+        initialized.status.success(),
+        "{}",
+        String::from_utf8_lossy(&initialized.stdout)
+    );
+    let before_baseline = fs::read(&baseline).unwrap();
+    let before_store = fs::read(store.join("workspace.json")).unwrap();
+    for output in [
+        &baseline,
+        &store.join("workspace.json"),
+        &store.join("artifact.wasm"),
+        &store.join("uncreated/artifact.wasm"),
+    ] {
+        let result = run_in(
+            &project,
+            &[
+                "build",
+                "--store",
+                store.to_str().unwrap(),
+                "--baseline",
+                baseline.to_str().unwrap(),
+                "--output",
+                output.to_str().unwrap(),
+                "--json",
+            ],
+        );
+        assert_eq!(
+            result.status.code(),
+            Some(2),
+            "{}",
+            String::from_utf8_lossy(&result.stdout)
+        );
+        assert_eq!(fs::read(&baseline).unwrap(), before_baseline);
+        assert_eq!(
+            fs::read(store.join("workspace.json")).unwrap(),
+            before_store
+        );
     }
 }

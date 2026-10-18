@@ -4,7 +4,8 @@
 //! Results retain file-aware origins and result-local symbol IDs. This is a
 //! library compiler phase, not a protocol envelope or executable/typed core IR.
 //! Rank-1 generics use rigid body parameters and fresh call-site inference;
-//! effects, handle lifetimes, execution, and verification belong to later phases.
+//! a postpass validates declared effects and conservative handle ownership.
+//! Execution and verification consume the checked result separately.
 //!
 //! ```
 //! use pactern::resolution::ParsedFile;
@@ -96,7 +97,7 @@ pub struct CheckResult {
 }
 
 impl CheckResult {
-    /// Success establishes core value typing only, not effect/handle safety.
+    /// Success establishes value typing, declared effects, and handle ownership.
     pub fn is_success(&self) -> bool {
         self.resolution.is_success() && self.diagnostics.is_empty()
     }
@@ -117,7 +118,13 @@ pub fn check(files: &[ParsedFile]) -> CheckResult {
             call_type_arguments: vec![],
         };
     }
-    Checker::new(files, resolution).run()
+    let mut checked = Checker::new(files, resolution).run();
+    if checked.is_success() {
+        checked
+            .diagnostics
+            .extend(crate::effects::check(files, &checked));
+    }
+    checked
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -334,6 +341,26 @@ impl<'a> Checker<'a> {
     }
 
     fn collect_signatures(&mut self) {
+        let handle = self
+            .out
+            .resolution
+            .symbols
+            .iter()
+            .find(|s| s.name == "host::quota::Txn")
+            .unwrap()
+            .id;
+        for symbol in &self.out.resolution.symbols {
+            let (parameters, result) = match symbol.name.as_str() {
+                "host::quota::read" => (vec![Ty::Named(handle)], Ty::I64),
+                "host::quota::reserve" => (vec![Ty::Named(handle), Ty::I64], Ty::Bool),
+                "host::quota::commit" | "host::quota::rollback" => {
+                    (vec![Ty::Named(handle)], Ty::Unit)
+                }
+                _ => continue,
+            };
+            self.signatures
+                .insert(symbol.id, Signature { parameters, result });
+        }
         for i in 0..self.files.len() {
             let file = FileId(i);
             for d in &self.files[i].tree.declarations {
@@ -343,12 +370,12 @@ impl<'a> Checker<'a> {
                         let mut parameters = vec![];
                         for p in &f.parameters {
                             let ty = self.annotation(file, &p.ty);
-                            if p.borrowed {
+                            if p.borrowed && ty != Ty::Named(handle) {
                                 self.error(
                                     file,
                                     p.span,
                                     "PTN_TYPE_UNSUPPORTED_HANDLE",
-                                    "borrowed handles are not implemented",
+                                    "borrow applies only to registered handle types",
                                     Some(id),
                                 );
                             }
@@ -1297,13 +1324,13 @@ impl<'a> Checker<'a> {
             Argument::Expression(e) => {
                 self.expr(file, e, expected);
             }
-            Argument::Borrow(name) => self.error(
-                file,
-                name.span,
-                "PTN_TYPE_UNSUPPORTED_HANDLE",
-                "borrowed handles are not implemented",
-                None,
-            ),
+            Argument::Borrow(name) => {
+                let id = self.reference(file, name.value.span);
+                let actual = self.types.get(&id).cloned().unwrap_or(Ty::Error);
+                if let Some(expected) = expected {
+                    self.expect(file, name.span, &actual, &expected, Some(id));
+                }
+            }
         }
     }
     fn pattern(&mut self, file: FileId, pattern: &ast::Pattern, expected: &Ty) -> CoverPattern {

@@ -9,10 +9,9 @@ publish = false
 
 [dependencies]
 serde.workspace = true
-sha2.workspace = true
-
-[dev-dependencies]
 serde_json.workspace = true
+sha2.workspace = true
+wasmi = { version = "2.0.0", default-features = false, features = ["stable", "std", "validate", "portable-dispatch"] }
 
 [lints]
 workspace = true

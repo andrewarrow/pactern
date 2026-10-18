@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pactern.dev/evidence/0.1.0/schema",
+  "title": "Pactern artifact evidence 0.1.0",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "binding": {
+      "$ref": "#/$defs/binding"
+    },
+    "proofs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/proof"
+      }
+    },
+    "guards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/guard"
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/test"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "binding",
+    "proofs",
+    "guards",
+    "tests"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "proved",
+            "refuted",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "counterexample": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "counterexample"
+      ],
+      "additionalProperties": false
+    },
+    "proof": {
+      "type": "object",
+      "properties": {
+        "function": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "precondition_consistency": {
+          "$ref": "#/$defs/claim"
+        },
+        "postcondition": {
+          "$ref": "#/$defs/claim"
+        },
+        "absence_of_traps": {
+          "$ref": "#/$defs/claim"
+        },
+        "termination": {
+          "$ref": "#/$defs/claim"
+        },
+        "solver": {
+          "type": "string"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exploration_bound": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "program_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "function",
+        "precondition_consistency",
+        "postcondition",
+        "absence_of_traps",
+        "termination",
+        "solver",
+        "assumptions",
+        "exploration_bound",
+        "program_hash"
+      ],
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trap": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "trap",
+        "cause"
+      ],
+      "additionalProperties": false
+    },
+    "case": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "interpreter": {
+          "$ref": "#/$defs/outcome"
+        },
+        "compiled": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/outcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "arguments",
+        "passed",
+        "interpreter",
+        "compiled",
+        "failure"
+      ],
+      "additionalProperties": false
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "requested": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "executed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "discarded_preconditions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "environment": {
+          "type": "string"
+        },
+        "compiled_engine": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case"
+          }
+        },
+        "program_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "seed",
+        "requested",
+        "executed",
+        "discarded_preconditions",
+        "environment",
+        "compiled_engine",
+        "cases",
+        "program_hash"
+      ],
+      "additionalProperties": false
+    },
+    "binding": {
+      "type": "object",
+      "properties": {
+        "source_hashes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "dependency_hashes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "compiler_version": {
+          "type": "string"
+        },
+        "compiler_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "solver_version": {
+          "type": "string"
+        },
+        "solver_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "target": {
+          "type": "string"
+        },
+        "artifact_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "policy_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "program_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "source_hashes",
+        "dependency_hashes",
+        "compiler_version",
+        "compiler_hash",
+        "solver_version",
+        "solver_hash",
+        "target",
+        "artifact_hash",
+        "policy_hash",
+        "assumptions",
+        "program_hash"
+      ],
+      "additionalProperties": false
+    },
+    "guard": {
+      "type": "object",
+      "properties": {
+        "obligation_id": {
+          "type": "string",
+          "pattern": "^obl_[0-9a-f]{64}$"
+        },
+        "artifact_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "phase": {
+          "enum": [
+            "requires",
+            "ensures"
+          ]
+        },
+        "function": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "clause": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "obligation_id",
+        "artifact_hash",
+        "phase",
+        "function",
+        "clause"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

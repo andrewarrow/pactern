@@ -1,122 +1,141 @@
 # Pactern CLI 0.1.0
 
-The CLI reports version metadata and help, checks core value types in source-only
-packages, and formats source. Verification, execution, builds, semantic queries,
-and change requests remain reserved commands.
+The experimental CLI checks and formats source, verifies a narrow pure fragment,
+compiles and executes guarded Wasm, runs seeded properties, and exposes semantic
+queries and managed atomic changes. `pactern help COMMAND` describes each command.
 
-## Output
+## Output and options
 
-`pactern --json` selects JSON output globally, including for errors, when it
-appears before the `--` argument terminator. Each successful metadata or help
-response is one JSON object followed by a newline on stdout. Errors are emitted
-as one protocol 0.1.0 diagnostic object followed by a newline on stdout. The
-diagnostic uses the existing [protocol schema](../../spec/0.1.0/schemas/diagnostic.schema.json);
-this CLI document does not define another diagnostic format.
+`--json` selects one JSON document on stdout, including failures. Errors use the
+[diagnostic protocol](../../spec/0.1.0/schemas/diagnostic.schema.json), with original
+UTF-8 byte spans and related declarations when available. Without `--json`, errors
+go to stderr; project reports are pretty-printed JSON. Editor diagnostics use
+zero-based UTF-16 columns. JSON I64 values are exact decimal strings.
 
-Without `--json`, help and version information go to stdout, while errors go to
-stderr. The stderr stream is normally empty for successful commands. A failure
-to write output exits with status 1; the CLI makes a best-effort text error
-report on stderr.
+Global flags work before the `--` terminator:
 
-Version and help responses have their own output contracts. Both carry
-`cli_version: "0.1.0"`, independently of the protocol version. The language
-version in version output identifies the target language specification; it does
-not claim that language conformance has been implemented.
+- `--protocol-version 0.1.0` requires an exact protocol version.
+- `--help`, `-h`, or `help [COMMAND]` prints help.
+- `--version`, `-V`, or `version` prints matched tool/CLI/language/protocol versions.
+- `--store PATH` selects an atomic managed workspace.
+- `--baseline PATH` selects the trusted owner's external acceptance baseline.
 
-- [Version output schema](version.schema.json)
-- [Help output schema](help.schema.json)
-- [Source command success schema](source.schema.json)
-
-Each `check` or `fmt` invocation also emits exactly one JSON object. On failure,
-the CLI reports the first diagnostic in deterministic file/analysis order; the
-library snapshot API exposes every diagnostic from the failing frontend stage.
-Located errors preserve the compiler's stable codes, phase, UTF-8 byte spans, and
-related declaration spans. Plain text prints paths and byte ranges on stderr.
-
-The JSON help `text` is human-readable terminal help, not a machine-readable
-command catalog. Use the CLI parser and help text for interactive guidance; the
-schema guarantees only the response envelope.
-
-## Global options
-
-- `--json` selects JSON output.
-- `--protocol-version VERSION` selects the exact diagnostic protocol version.
-  Only `0.1.0` is supported. An unknown version is rejected with a diagnostic
-  in protocol 0.1.0 and exit status 2.
-- `-h`, `--help` prints top-level help; `--help` can also be used with a
-  command. `help [COMMAND]` prints top-level or command help.
-- `-V`, `--version`, or the `version` command prints version metadata.
-
-Global options are recognized before `--`. After the terminator, arguments are
-passed to the selected command as positional values.
+Existing [version](version.schema.json), [help](help.schema.json), and
+[source success](source.schema.json) schemas remain valid. Runtime/proof/test/build
+reports are experimental; do not treat local numeric compiler IDs as persistent
+semantic IDs.
 
 ## Commands
 
-| Command | Syntax | Scaffold behavior |
-| --- | --- | --- |
-| `version` | `pactern version` | Prints version metadata; exits 0. |
-| `check` | `pactern check [PATH ...]` | Checks syntax, names, and core value types; exits 0 on success, 1 on a source error. |
-| `fmt` | `pactern fmt [--check] [PATH ...]` | Formats source; `--check` exits 1 if formatting is needed and never writes. |
-| `verify` | `pactern verify` | Reserved; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `test` | `pactern test [--affected]` | Reserved; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `build` | `pactern build [--target wasm]` | Reserved; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `inspect` | `pactern inspect SYMBOL` | Reserved; requires a symbol; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `callers` | `pactern callers SYMBOL` | Reserved; requires a symbol; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `impact` | `pactern impact --change PATH` | Reserved; requires a change path; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
-| `apply` | `pactern apply PATH [--dry-run]` | Reserved; requires a change path; returns `PTN_TOOL_NOT_IMPLEMENTED`, exit 1. |
+| Command | Behavior |
+| --- | --- |
+| `check [PATH ...]` | Checks syntax, names, values, effects, and handle ownership. |
+| `fmt [--check] [PATH ...]` | Preserves comments/tokens and applies canonical layout. `--check` never writes. |
+| `verify [PATH ...]` | Runs external Z3 for every pact target, with separate consistency, postcondition, trap, and termination claims. |
+| `build [PATH ...] --entry NAME --args JSON [-o FILE]` | Writes guarded invocation-specialized Wasm and generated C; default output is `target/pactern.wasm`. |
+| `run [PATH ...] --entry NAME --args JSON` | Compiles and runs in the bounded deny-import host. Optional `-o FILE` retains artifacts. |
+| `test [PATH ...] --entry NAME [--seed N] [--cases N]` | Compares guarded interpreter and Wasm executions for seeded I64/Bool properties. |
+| `inspect SYMBOL` | Returns a declaration with source, signature, hash, dependencies, and identity. |
+| `callers SYMBOL` | Returns referencing functions with completeness information. |
+| `impact --change FILE` | Checks the request revision and returns conservatively affected declarations/interfaces/pacts. |
+| `editor` | Emits editor diagnostics over the selected workspace. |
+| `editor --path FILE --byte OFFSET` | Looks up the definition at a UTF-8 byte offset. |
+| `init [PATH ...] --store PATH --baseline PATH` | Imports a source package and creates a new external baseline and managed store. |
+| `apply FILE [--dry-run] --store PATH --baseline PATH` | Stages a revision-checked request, enforces protection and required proof, and atomically publishes the managed snapshot. |
 
-The `build` target currently accepts only `wasm`; another target is a bad
-invocation and exits 2. Reserved commands never open project/change-request paths.
+A unique function or `main` can be selected implicitly. Entry points must be
+nongeneric; generic helpers work. `--args` defaults to `[]`. Bool, strings, lists,
+records, tagged enums, Option and Result are decoded according to the entry's
+types. I64 JSON numbers are rejected to avoid precision loss. `build`/`run` accept
+only `--target wasm`; `--no-contracts` selects the explicit unguarded ablation.
 
-## Source selection and formatting
+`verify` exits nonzero for refutation, unknown, unsupported, inconsistent premises,
+or no pacts. A timeout is not a successful proof. `test` defaults to seed 1 and
+20 cases, with a maximum of 10,000. It discards false preconditions and records
+seeds and failures; it does not establish unbounded validity or trap freedom.
+`test --affected` currently runs the complete selected-entry property suite,
+reporting that dependency filtering is unavailable. The semantic library's
+`affected_tests` API supports explicit test dependency inventories.
 
-Without paths, `check` and `fmt` recursively select `.ptn` files in `src` and
-`contracts` under the current directory. Explicit files/directories replace that
-selection. `*.pact.ptn` files use the contract grammar; other `.ptn` files use the
-implementation grammar. Paths must remain inside the current directory, be UTF-8,
-and normalize to the protocol's workspace-relative path syntax. Symbolic links and
-overlapping selections are rejected. Selection is bounded to 256 files, 16 MiB in
-total, directory depth 64, and the lexer's 1 MiB per-file limit. Empty selections
-return `PTN_TOOL_NO_SOURCES`; exceeded loading limits return `PTN_TOOL_SOURCE_LIMIT`.
+## Source selection and limits
 
-`check` treats the selection as a closed package: imported modules must be among
-the selected files, with the resolver's `src/<module>.ptn` and
-`contracts/<module>.pact.ptn` paths. No imports trigger additional reads or downloads.
-Success establishes core value typing, including generic and Boolean pact-clause
-typing; it does not establish effects, handles, runtime guards, or verification.
-There is no manifest, dependency, policy, or identity-ledger loader yet.
+Without paths, source commands select `.ptn` files under `src` and `contracts` in
+the current directory. Explicit paths replace that selection. The resolver uses
+`src/<module>.ptn` and `contracts/<module>.pact.ptn`; imported modules must be
+included. Imports do not cause filesystem or network reads. The registered quota
+host namespace is supplied by the compiler.
 
-`fmt` checks syntax without requiring successful resolution or typing. It preserves
-exact token spellings, comments, string escapes, parentheses, and trailing commas.
-Layout uses four-space indentation and LF, leaving comment contents verbatim.
-Repeated formatting produces identical bytes. Output expansion beyond 1 MiB
-returns `PTN_TOOL_FORMAT_LIMIT`. `fmt --check` reports `PTN_TOOL_FORMAT_REQUIRED`
-with a source span for the first file needing formatting.
+Paths stay inside the current directory. Symbolic links and overlapping selections
+are rejected. Limits are 256 files, 16 MiB total, directory depth 64, and 1 MiB per
+file. Every implementation and contract is also limited to **1,000 physical lines**,
+including blank lines and comments. CRLF, LF, and CR count once; a trailing newline
+does not add an empty line. `PTN_LEX_LINE_LIMIT` points at the first excess line.
 
-Formatting validates every selected file before writing any. Changed files are
-replaced individually through temporary files in the same directory, preserving
-permissions. A multi-file format is not a transaction: a later I/O failure can
-leave earlier files formatted. Concurrent edits require rerunning the command;
-this formatter does not implement the protected change service of milestone 23.
+Formatting preserves exact literals, token spellings, comments, parentheses, and
+trailing commas. Layout uses four spaces and LF; comment bytes are preserved.
+It is idempotent. Output beyond the byte or line budget receives
+`PTN_TOOL_FORMAT_LIMIT` or `PTN_TOOL_FORMAT_LINE_LIMIT` before any selected file is
+written. `fmt --check` reports `PTN_TOOL_FORMAT_REQUIRED` when layout differs.
+Individual formatting writes use atomic replacement and preserve permissions;
+a multi-file format is not a transaction. `check` and `fmt` operate on ordinary
+source files, even if managed-workspace flags are present.
 
-Source success objects contain `kind: "check"` or `"format"`, `check_only`, and
-sorted `files` entries with `path` and `changed`. Their `source_revision` identifies
-the **input** bytes, including when formatting writes new bytes. Read-only checks
-always have `changed: false`.
+The source report's `source_revision` hashes the input bytes, paths, kinds, and
+frontend profile; it differs from the full managed revision binding identities,
+external inputs, and policy. Successful static checking does not imply proof.
 
-The diagnostic/source-command revision uses protocol H framing over selected file
-bytes, their kinds, and the source-only frontend profile described in the
-[development guide](../../development.md#formatting-and-source-diagnostics).
-It binds offsets to that source snapshot; it is not the full trusted workspace
-revision needed for future acceptance, evidence, or semantic edits. Persistent
-symbol IDs are not allocated yet: protocol `symbol_id` is omitted, and temporary
-resolver IDs are never serialized as persistent identities.
+## Managed changes and trust
 
-## Exit status
+Choose an existing parent directory outside the candidate tree for the baseline,
+and a new managed-store directory. Store paths must not contain symlinks; on macOS,
+use canonical paths rather than `/tmp` or `/var` aliases.
 
-- `0`: the requested metadata, check, or format operation succeeded.
-- `1`: source checking failed, formatting is needed, loading/I/O failed, a
-  limit was exceeded, or a well-formed reserved command is unavailable.
-- `2`: the invocation is invalid or the selected protocol version is
-  unsupported.
+```sh
+pactern init --store ../managed-project --baseline ../project-baseline.json --json
+pactern inspect quota::reserve --store ../managed-project \
+  --baseline ../project-baseline.json --json
+pactern apply repair.json --dry-run --store ../managed-project \
+  --baseline ../project-baseline.json --json
+pactern apply repair.json --store ../managed-project \
+  --baseline ../project-baseline.json --json
+```
 
+`init` refuses existing stores/baselines, protects pacts and their helper closure,
+and requires frontend checking plus actual unbounded verification for pact targets
+on subsequent edits. A required unsupported proof blocks an edit. Protecting a
+pact cannot make an implementation correct without the required evidence.
+Specification changes require externally issued exact approvals through the
+library/service API; the CLI does not invent an approval flag.
+
+`apply` uses the [semantic-change schema](../../spec/0.1.0/schemas/change-request.schema.json).
+The managed store atomically publishes all source bytes and identities in one
+snapshot. Stale, invalid, unproved, or protected changes leave it unchanged. This
+operation does not overwrite ordinary editor-owned source trees. A managed source
+snapshot can be used directly by build/run/verify/test and semantic queries.
+Without a stored ledger, source-only query IDs are provisional and scoped to the
+source revision; managed identities persist across supported renames/moves.
+
+The CLI is a client, not the security boundary against a malicious local operator.
+CI must fix the baseline, acceptance executable, checks, and approval channel
+outside candidate control. See [semantic trust](../../semantic.md) and
+[candidate CI activation](../../candidate.md).
+
+## Executable example
+
+After `cargo build --workspace --locked`, run from the checkout:
+
+```sh
+(cd fixtures/conformance && ../../target/debug/pactern verify \
+  src/quota.ptn contracts/quota.pact.ptn --json)
+(cd fixtures/conformance && ../../target/debug/pactern run \
+  --entry quota::reserve --args '["3","2"]' \
+  src/quota.ptn contracts/quota.pact.ptn --json)
+cargo run -p pactern --example quota_workflow --locked -- target/quota-workflow
+```
+
+## Exit codes
+
+- `0`: the requested operation completed; editor diagnostics can still contain errors.
+- `1`: source/contract/runtime/check failure, unavailable external tool, stale or
+  protected edit, unsupported/unknown proof, or I/O/resource failure.
+- `2`: invalid CLI arguments or unsupported protocol version.

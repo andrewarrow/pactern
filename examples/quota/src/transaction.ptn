@@ -1,0 +1,21 @@
+module transaction;
+
+fn current(t: borrow host::quota::Txn) -> I64 effects {db.read} {
+    return host::quota::read(borrow t);
+}
+
+pub fn reserve(t: host::quota::Txn, amount: I64) -> Bool effects {db.read, db.write} {
+    let available = current(borrow t);
+    if (amount <= 0 || amount > available) {
+        host::quota::rollback(t);
+        return false;
+    } else {
+        let accepted = host::quota::reserve(borrow t, amount);
+        if (accepted) {
+            host::quota::commit(t);
+        } else {
+            host::quota::rollback(t);
+        }
+        return accepted;
+    }
+}

@@ -17,8 +17,11 @@ mod ast;
 mod lexer;
 mod parser;
 mod source;
+pub(crate) use lexer::check_line_limit;
 
 pub use ast::*;
-pub use lexer::{Keyword, MAX_SOURCE_BYTES, MAX_TOKENS, Symbol, Token, TokenKind, lex};
+pub use lexer::{
+    Keyword, MAX_SOURCE_BYTES, MAX_SOURCE_LINES, MAX_TOKENS, Symbol, Token, TokenKind, lex,
+};
 pub use parser::{MAX_NESTING, parse};
 pub use source::{Position, SourceFile, Span, SyntaxDiagnostic};

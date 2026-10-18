@@ -1,4 +1,4 @@
-//! Bounded pure execution of checked core IR. Pacts are not executed.
+//! Bounded pure execution of checked core IR, including runtime pact guards.
 use crate::{
     core::*,
     resolution::{Location, SymbolId},
@@ -29,11 +29,16 @@ pub enum TrapKind {
     ExecutionLimit,
     InvalidInvocation,
     Invariant,
+    Precondition,
+    Postcondition,
+    ContractEvaluation,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Trap {
     pub kind: TrapKind,
     pub origin: Option<Location>,
+    /// Underlying language trap when evaluating a contract clause.
+    pub cause: Option<Box<Trap>>,
 }
 impl std::fmt::Display for Trap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -75,16 +80,37 @@ pub fn execute(
     arguments: Vec<Value>,
     limits: Limits,
 ) -> Result<Value> {
+    execute_mode(program, function, arguments, limits, false)
+}
+
+/// Execute with pact checks at every function entry and normal return.
+pub fn execute_guarded(
+    program: &Program,
+    function: SymbolId,
+    arguments: Vec<Value>,
+    limits: Limits,
+) -> Result<Value> {
+    execute_mode(program, function, arguments, limits, true)
+}
+fn execute_mode(
+    program: &Program,
+    function: SymbolId,
+    arguments: Vec<Value>,
+    limits: Limits,
+    guards: bool,
+) -> Result<Value> {
     let mut fuel = limits.fuel;
     for value in &arguments {
         fuel -= value_cost(value, fuel).ok_or(Trap {
             kind: TrapKind::ExecutionLimit,
             origin: None,
+            cause: None,
         })?;
     }
     let invalid = || Trap {
         kind: TrapKind::InvalidInvocation,
         origin: None,
+        cause: None,
     };
     let d = program
         .declarations()
@@ -115,10 +141,11 @@ pub fn execute(
         fuel,
         max_depth: limits.call_depth.min(64),
         depth: 0,
+        guards,
     }
     .call(function, arguments, d.origin)
 }
-fn accepts(p: &Program, t: &ValueType, v: &Value, depth: usize) -> bool {
+pub(crate) fn accepts(p: &Program, t: &ValueType, v: &Value, depth: usize) -> bool {
     if depth > 64 {
         return false;
     }
@@ -209,12 +236,14 @@ struct Machine<'a> {
     fuel: u64,
     max_depth: usize,
     depth: usize,
+    guards: bool,
 }
 impl Machine<'_> {
     fn trap(&self, kind: TrapKind, origin: Location) -> Trap {
         Trap {
             kind,
             origin: Some(origin),
+            cause: None,
         }
     }
     fn tick(&mut self, origin: Location) -> Result<()> {
@@ -243,13 +272,79 @@ impl Machine<'_> {
         };
         let mut env = parameters.iter().copied().zip(args).collect();
         self.depth += 1;
-        let result = self.block(body, &mut env);
+        let result = (|| {
+            self.check_clauses(id, true, &mut env)?;
+            let value = match self.block(body, &mut env)? {
+                Flow::Return(v) => v,
+                Flow::Next => Value::Unit,
+                _ => return Err(self.trap(TrapKind::Invariant, origin)),
+            };
+            if self.guards {
+                for symbol in &self.program.resolution().symbols {
+                    if symbol.kind == crate::resolution::SymbolKind::Result
+                        && symbol.parent == Some(id)
+                    {
+                        let cost = value_cost(&value, self.fuel)
+                            .ok_or_else(|| self.trap(TrapKind::ExecutionLimit, origin))?;
+                        self.fuel -= cost;
+                        env.insert(symbol.id, value.clone());
+                    }
+                }
+            }
+            self.check_clauses(id, false, &mut env)?;
+            Ok(value)
+        })();
         self.depth -= 1;
-        match result? {
-            Flow::Return(v) => Ok(v),
-            Flow::Next => Ok(Value::Unit),
-            _ => Err(self.trap(TrapKind::Invariant, origin)),
+        result
+    }
+    fn check_clauses(&mut self, target: SymbolId, requires: bool, env: &mut Env) -> Result<()> {
+        if !self.guards {
+            return Ok(());
         }
+        for declaration in self.program.declarations() {
+            let DeclarationKind::Pact {
+                target: pact_target,
+                clauses,
+            } = &declaration.kind
+            else {
+                continue;
+            };
+            if *pact_target != target {
+                continue;
+            }
+            for clause in clauses.iter().filter(|clause| clause.requires == requires) {
+                match self.expr(&clause.condition, env) {
+                    Ok(Value::Bool(true)) => {}
+                    Ok(Value::Bool(false)) => {
+                        return Err(self.trap(
+                            if requires {
+                                TrapKind::Precondition
+                            } else {
+                                TrapKind::Postcondition
+                            },
+                            clause.origin,
+                        ));
+                    }
+                    Ok(_) => return Err(self.trap(TrapKind::Invariant, clause.origin)),
+                    Err(mut cause) => {
+                        // The guest ABI retains the underlying cause, not an
+                        // unbounded chain of nested contract-evaluation wrappers.
+                        while cause.kind == TrapKind::ContractEvaluation {
+                            let Some(inner) = cause.cause.take() else {
+                                break;
+                            };
+                            cause = *inner;
+                        }
+                        return Err(Trap {
+                            kind: TrapKind::ContractEvaluation,
+                            origin: Some(clause.origin),
+                            cause: Some(Box::new(cause)),
+                        });
+                    }
+                }
+            }
+        }
+        Ok(())
     }
     fn block(&mut self, b: &Block, env: &mut Env) -> Result<Flow> {
         for s in &b.statements {
@@ -308,6 +403,7 @@ impl Machine<'_> {
         let bad = || Trap {
             kind: TrapKind::Invariant,
             origin: Some(e.origin),
+            cause: None,
         };
         let value = match &e.kind {
             ExpressionKind::Bool(v) => Value::Bool(*v),

@@ -16,12 +16,14 @@ You define the behavior and permissions. The agent proposes an implementation.
 The compiler, acceptance tools, and runtime are designed to check that the change
 respects the agreement—and return useful evidence when it doesn't.
 
-**Early development:** the specification, Rust frontend, typed core IR, pure
-reference interpreter, source formatter, installable CLI, conformance fixtures,
-and Go/Rust baseline harness are available. Rank-1 generic functions and data types
-are supported. The CLI checks and formats source-only packages. Compiled
-execution, verification, and semantic edits remain to be implemented. The examples
-and workflow below describe the design.
+**Developer preview:** the Rust frontend checks values, declared effects, and
+scoped handle ownership. The pure interpreter and generated C/WebAssembly backend
+execute the conformance corpus with optional pact guards. Narrow SMT verification,
+artifact-bound evidence, persistent semantic identities, managed atomic edits,
+and a transactional quota/replay host are available. Pactern source and contract
+files have a hard 1,000-line limit. See the [candidate guide](docs/candidate.md),
+[implementation status](MILESTONES.md), and [alpha evaluation](docs/alpha-evaluation.md)
+for tested behavior and remaining release gates.
 
 ## Why write the rules twice?
 
@@ -37,7 +39,7 @@ answer. This is the same reason a useful test needs an expected result that does
 not simply call the function under test again.
 
 Separate files let requirements have different change rules from implementations.
-Under the planned acceptance policy, an agent can repair the code while the
+Under the acceptance policy, an agent can repair the code while the
 accepted pact and its meaning-defining helpers stay protected. A legitimate
 requirement change gets its own approval, tied to the exact diff.
 
@@ -135,11 +137,10 @@ one allocation decision, not fairness over time, job completion, or concurrent
 updates to queue state.
 
 The example uses the loop-free integer and record subset targeted by the
-[language specification](docs/spec/0.1.0/language.md). The frontend can
-parse, resolve, and type-check this source, but execution and verification are not
-implemented yet. The planned pipeline would check postconditions, arithmetic
-traps, and termination as separate claims, and report counterexamples when it refutes a
-supported claim.
+[language specification](docs/spec/0.1.0/language.md). The frontend parses, resolves, and type-checks this source. The interpreter and
+Wasm backend execute it; the narrow verifier reports postconditions, arithmetic
+traps, and termination as separate claims. Unsupported code and solver timeouts
+remain unsupported or unknown.
 
 ## Why Pactern's approach fits agent development
 
@@ -153,7 +154,7 @@ That check also covers ordinary text edits and the helpers that give a contract
 its meaning. An agent shouldn't be able to redefine success by editing the file
 that tells CI what to accept.
 
-**Agents work with the compiler's understanding of the project.** The planned
+**Agents work with the compiler's understanding of the project.** The
 semantic API exposes signatures, callers, effects, and affected contracts.
 Changes name a target and a base revision, then validate in an isolated candidate
 before an atomic commit. A stale proposal is rejected before it can overwrite
@@ -162,7 +163,7 @@ and Git review remain part of the workflow.
 
 **Permissions hold at execution time.** Effect declarations make requested
 operations visible in source. Scoped handles issued by the host authorize those
-operations for specific resources or tenants. The planned WebAssembly host
+operations for specific resources or tenants. The WebAssembly host
 denies ambient access and enforces execution, memory, and operation budgets.
 Declaring `db.write` cannot grant permission to write another customer's data.
 For the quota service, transactional storage must separately enforce atomic
@@ -180,7 +181,7 @@ The compiler and verifier need to agree on what a program means. So do the
 semantic editor and runtime. Pactern puts those responsibilities around one
 small language and a shared representation. The current resolver builds
 file-aware symbol and reference indexes, and the core type checker infers value
-types with source origins. The typed core representation remains planned work.
+types with source origins. The typed core representation is shared by execution, C lowering, and verification.
 
 For example, `I64` arithmetic is specified to trap on overflow in every build
 mode. The interpreter, generated code, and prover must all preserve that rule.
@@ -188,7 +189,7 @@ A proof over unlimited mathematical integers would say too little about an
 implementation that executes fixed-width arithmetic.
 
 The language uses familiar functions, braces, modules, `Option` and `Result`,
-with immutable values by default and explicit local mutation. The planned
+with immutable values by default and explicit local mutation. The
 implementation uses Rust for the toolchain, a reference interpreter to check
 semantics, and C lowering to WebAssembly for deployment.
 
@@ -220,22 +221,31 @@ cargo install --path crates/pactern-cli --locked
 pactern version --json
 ```
 
-Help, version metadata, structured tool diagnostics, and the library syntax,
-resolution, and core typing APIs work today. The resolver accepts parsed project
-files with package-relative module paths and returns file-aware declarations, references,
-and diagnostics. The type checker validates core values, local inference, calls,
-mutation, returns, rank-1 generics, and nested exhaustive matches. The pure library
-interpreter executes checked IR. `pactern check [PATH ...]` checks source-only
-packages; `pactern fmt [--check] [PATH ...]` formats source while preserving comments
-and tokens. Both select `src` and `contracts` by default and emit source-bound JSON
-diagnostics with `--json`. `verify`, `test`, `build`, and `apply` remain unavailable.
+`pactern check` and `pactern fmt` select `src` and `contracts` by default.
+`verify` emits separate SMT claims; `build` produces a guarded Wasm artifact;
+`run` compiles and executes it under memory/fuel limits; `test` compares seeded
+properties in the interpreter and Wasm host. I64 arguments use exact JSON decimal
+strings. For example, after building:
 
-If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): effects and noncopyable handles.
-The [conformance corpus](fixtures/conformance/README.md) and
-[Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
-reproducible measurements. Concrete edge cases, small failing programs, and challenges to
-the specification are useful contributions alongside compiler work.
+```sh
+(cd fixtures/conformance && ../../target/debug/pactern run \
+  --entry quota::reserve --args '["3","2"]' \
+  src/quota.ptn contracts/quota.pact.ptn --json)
+cargo run -p pactern --example quota_workflow --locked -- target/quota-workflow
+```
+
+The quota workflow exposes and repairs a defect, rejects protected and stale
+changes, executes the compiled rule inside a tenant transaction, replays a failure
+without writes, and emits artifact-linked evidence. `inspect`, `callers`, `impact`,
+and the `editor` adapter use the shared semantic index. `init` and `apply` operate
+on a managed workspace with an externally supplied baseline; ordinary source-tree
+files are not silently overwritten by semantic transactions.
+
+This is an experimental source candidate. Wasm arguments are currently specialized
+into each artifact; the storage adapter is in-memory; a complete LSP extension is
+not included. Runtime smoke benchmarks have been rerun, but matched agent repair
+ablations remain unmeasured. The recorded decision is to narrow the preview.
+See [milestones](MILESTONES.md) for exact completion boundaries.
 
 - [Language specification](docs/spec/0.1.0/README.md): semantics, grammar, and protocol contracts.
 - [Design plan](PLAN.md): architecture, tradeoffs, and evaluation criteria.

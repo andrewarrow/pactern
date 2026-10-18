@@ -318,6 +318,16 @@ impl<'a> Resolver<'a> {
                     .insert((*name).into(), id);
             }
         }
+        for (name, kind) in [
+            ("host::quota::Txn", SymbolKind::BuiltinType),
+            ("host::quota::read", SymbolKind::Function),
+            ("host::quota::reserve", SymbolKind::Function),
+            ("host::quota::commit", SymbolKind::Function),
+            ("host::quota::rollback", SymbolKind::Function),
+        ] {
+            let id = self.add_symbol(name, kind, None, None, true, None);
+            self.prelude.insert(name.into(), id);
+        }
     }
 
     fn collect_modules(&mut self) {
@@ -579,6 +589,9 @@ impl<'a> Resolver<'a> {
                     );
                     continue;
                 }
+                if name == "host::quota" {
+                    continue;
+                }
                 if let Some(target) = self.module_names.get(&name).copied().filter(|id| {
                     !matches!(
                         self.out.modules[id.0].name.split("::").next(),
@@ -780,7 +793,7 @@ impl<'a> Resolver<'a> {
         let names: Vec<&str> = path.value.iter().map(|s| s.value.as_str()).collect();
         let location = Self::location(file, path.span);
         let module = self.file_modules[file.0];
-        let mut symbol = None;
+        let mut symbol = self.prelude.get(&names.join("::")).copied();
         if names.len() == 1 {
             let name = names[0];
             symbol = match expected {

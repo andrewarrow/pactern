@@ -93,6 +93,16 @@ pub fn format(source: &SourceFile, kind: FileKind) -> Result<String, SyntaxDiagn
     if output.text.len() > MAX_SOURCE_BYTES {
         return Err(output_limit(tree.span));
     }
+    if syntax::check_line_limit(&SourceFile::new(source.name(), output.text.clone())).is_err() {
+        return Err(SyntaxDiagnostic::new(
+            "PTN_TOOL_FORMAT_LINE_LIMIT",
+            "tool",
+            format!(
+                "formatted source exceeds {MAX_SOURCE_LINES} lines; split this file into smaller modules"
+            ),
+            tree.span,
+        ));
+    }
     Ok(output.text)
 }
 
