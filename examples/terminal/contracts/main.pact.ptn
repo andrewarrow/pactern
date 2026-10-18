@@ -1,0 +1,14 @@
+module main;
+pact answer_is_42 for answer {
+    ensures result == "The answer is 42.\n";
+}
+pact selection_rules for selection {
+    ensures result >= -1 && result <= 2;
+    ensures !(choice == "1" || choice == "answer") || result == 1;
+    ensures !(choice == "2" || choice == "help" || choice == "--help" || choice == "-h") || result == 2;
+    ensures !(choice == "0" || choice == "q" || choice == "quit" || choice == "exit") || result == 0;
+    ensures (choice == "1" || choice == "answer" || choice == "2" || choice == "help" || choice == "--help" || choice == "-h" || choice == "0" || choice == "q" || choice == "quit" || choice == "exit") || result == -1;
+}
+pact cli_exit_codes for main {
+    ensures result == 0 || result == 2;
+}

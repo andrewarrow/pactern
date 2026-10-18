@@ -12,6 +12,14 @@ UTF-8 byte spans and related declarations when available. Without `--json`, erro
 go to stderr; project reports are pretty-printed JSON. Editor diagnostics use
 zero-based UTF-16 columns. JSON I64 values are exact decimal strings.
 
+`run --terminal` explicitly grants stdin/stdout/stderr and process arguments to a
+single `host::terminal::Terminal` entry parameter. It prints the program's output
+directly, without an execution report, and returns its `I64` exit code (0..255) or
+zero for `Unit`. Pass program arguments after `--`, for example
+`pactern run --terminal -- --help`. `--json` is incompatible with terminal runs.
+`build --terminal` creates artifacts for the terminal host. Runtime pact guards
+remain enabled. See [terminal programs](../../terminal.md) for API and limits.
+
 Global flags work before the `--` terminator:
 
 - `--protocol-version 0.1.0` requires an exact protocol version.
@@ -63,7 +71,7 @@ Without paths, source commands select `.ptn` files under `src` and `contracts` i
 the current directory. Explicit paths replace that selection. The resolver uses
 `src/<module>.ptn` and `contracts/<module>.pact.ptn`; imported modules must be
 included. Imports do not cause filesystem or network reads. The registered quota
-host namespace is supplied by the compiler.
+and terminal host namespaces are supplied by the compiler.
 
 Paths stay inside the current directory. Symbolic links and overlapping selections
 are rejected. Limits are 256 files, 16 MiB total, directory depth 64, and 1 MiB per

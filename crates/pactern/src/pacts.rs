@@ -370,6 +370,24 @@ pub fn compile_guarded(
     limits: Limits,
 ) -> Result<GuardedArtifact, crate::backend::BackendError> {
     let c_source = crate::backend::emit_c_guarded(program, function, arguments, limits)?;
+    guarded_artifact(program, revision, function, c_source)
+}
+/// Compile a terminal entry with the same artifact-bound runtime guard evidence.
+pub fn compile_terminal_guarded(
+    program: &Program,
+    revision: &str,
+    function: SymbolId,
+    limits: Limits,
+) -> Result<GuardedArtifact, crate::backend::BackendError> {
+    let c_source = crate::backend::emit_c_terminal(program, function, limits, true)?;
+    guarded_artifact(program, revision, function, c_source)
+}
+fn guarded_artifact(
+    program: &Program,
+    revision: &str,
+    function: SymbolId,
+    c_source: String,
+) -> Result<GuardedArtifact, crate::backend::BackendError> {
     let wasm = crate::backend::compile_wasm(&c_source)?;
     let artifact_hash = crate::evidence::hash(&wasm);
     let reachable = reachable_functions(program, function);

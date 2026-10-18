@@ -94,6 +94,19 @@ previously built `.wasm` file. Artifacts currently embed their entry arguments.
 For a function with I64 parameters, pass arguments as strings, for example
 `--args '["3","2"]'` to both `build` and `run`.
 
+For an interactive CLI written in Pactern, try the terminal example from the
+toolchain checkout:
+
+```sh
+cd examples/terminal
+pactern run --terminal
+pactern run --terminal -- --help
+```
+
+The explicit `--terminal` grant connects stdin, stdout, stderr, and process
+arguments. Terminal runs print human-readable program output with no JSON report.
+See [terminal programs](docs/terminal.md) for the API, contracts, and limits.
+
 To prove the pact as well, install Z3 (the candidate suite uses 5.3.1), then run
 `pactern verify`. Z3 is not needed for the check/build/run steps above. See the
 [development guide](docs/development.md) for tests and full toolchain checks.

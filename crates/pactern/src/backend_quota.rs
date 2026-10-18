@@ -32,7 +32,7 @@ pub fn emit_c_quota(
             QuotaArgument::HandleSlot(s) => Input::HandleSlot(*s),
         })
         .collect();
-    super::emit(program, entry, &args, limits, true, true)
+    super::emit(program, entry, &args, limits, true, super::Bridge::Quota)
 }
 /// Consumes the invocation and the exact set of handles granted to this guest.
 /// Every exit revokes authority. Completed earlier commits remain committed;

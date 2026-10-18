@@ -211,7 +211,8 @@ For each call, the callee's declared effects must be contained in the caller's
 declared set. Check all calls, including calls in unreachable-looking branches;
 optimization cannot erase a required declaration. Imports do not erase effects.
 The static effect registry starts with `db.read`, `db.write`, `fs.read`, `fs.write`,
-`net.request`, `clock.read`, `random.read`, `env.read`, and `ai.infer`. These names
+`net.request`, `clock.read`, `random.read`, `env.read`, `ai.infer`, `terminal.read`,
+and `terminal.write`. These names
 identify categories, not a promise that every adapter ships in the first runtime.
 Unknown effect labels and missing host adapters are errors. General process
 execution is outside the initial core.

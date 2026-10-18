@@ -14,6 +14,40 @@ fn rejects(text: &str, code: &str) {
     assert!(c.diagnostics.iter().any(|e| e.code == code), "{:?}", c);
 }
 #[test]
+fn terminal_effects_and_ownership_are_checked() {
+    assert!(check("module m; import host::terminal; fn f(t:host::terminal::Terminal)->Unit effects{env.read,terminal.read,terminal.write}{let args=host::terminal::args(borrow t);let line=host::terminal::read_line(borrow t);host::terminal::write(borrow t,\"hello\");host::terminal::write_error(borrow t,\"error\");}").is_success());
+    rejects(
+        "module m; fn f(t:host::terminal::Terminal)->Unit{host::terminal::write(borrow t,\"hi\");}",
+        "PTN_EFFECT_BOUND",
+    );
+    rejects(
+        "module m; fn f(t:host::terminal::Terminal)->Unit effects{env.read}{let args=host::terminal::args(t);}",
+        "PTN_HANDLE_BORROW_MODE",
+    );
+    rejects(
+        "module m; fn f(t:host::terminal::Terminal)->Unit effects{env.read}{let next=t;let args=host::terminal::args(borrow t);}",
+        "PTN_HANDLE_USE_AFTER_MOVE",
+    );
+    rejects(
+        "module m; fn f(t:host::terminal::Terminal)->host::terminal::Terminal{return t;}",
+        "PTN_HANDLE_ESCAPE",
+    );
+    rejects(
+        "module m; struct S{t:host::terminal::Terminal,}",
+        "PTN_HANDLE_ESCAPE",
+    );
+    let checked = check(
+        "module m; fn f(t:host::terminal::Terminal)->Unit{let x=host::terminal::Terminal{};}",
+    );
+    assert!(
+        checked
+            .resolution
+            .diagnostics
+            .iter()
+            .any(|e| e.code == "PTN_RESOLVE_WRONG_SYMBOL_KIND")
+    );
+}
+#[test]
 fn declared_effects_are_upper_bounds_even_in_dead_code() {
     assert!(check("module m; fn a() -> Unit effects {db.read} {} fn b() -> Unit effects {db.read, db.write} {a();}").is_success());
     rejects(

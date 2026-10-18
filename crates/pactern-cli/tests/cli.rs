@@ -436,6 +436,152 @@ impl Drop for TempDir {
     }
 }
 
+fn terminal_project() -> TempDir {
+    let temp = TempDir::new();
+    fs::create_dir(temp.path().join("src")).unwrap();
+    fs::create_dir(temp.path().join("contracts")).unwrap();
+    fs::write(
+        temp.path().join("src/main.ptn"),
+        include_str!("../../../examples/terminal/src/main.ptn"),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("contracts/main.pact.ptn"),
+        include_str!("../../../examples/terminal/contracts/main.pact.ptn"),
+    )
+    .unwrap();
+    temp
+}
+
+#[test]
+fn terminal_help_and_arguments_belong_to_the_program() {
+    let temp = terminal_project();
+    for flag in ["--help", "-h", "help"] {
+        let output = run_in(temp.path(), &["run", "--terminal", "--", flag]);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stderr.is_empty());
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(text.starts_with("Hello Pactern\n\nUsage:"));
+        assert!(!text.contains("source_revision"));
+        assert!(!text.contains("Choose an option"));
+    }
+    let answer = run_in(temp.path(), &["run", "--terminal", "--", "answer"]);
+    assert_eq!(answer.stdout, b"The answer is 42.\n");
+    assert!(answer.status.success() && answer.stderr.is_empty());
+    for arguments in [
+        vec!["--json"],
+        vec!["answer", "extra"],
+        vec!["--version"],
+        vec!["é日"],
+    ] {
+        let output = run_in(
+            temp.path(),
+            &[vec!["run", "--terminal", "--"], arguments].concat(),
+        );
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            output.stderr,
+            b"Unknown command or extra arguments. Use --help for usage.\n"
+        );
+    }
+}
+
+#[test]
+fn terminal_menu_handles_input_eof_and_invalid_choices_without_json() {
+    use std::io::Write;
+    use std::process::Stdio;
+    let temp = terminal_project();
+    let mut child = Command::new(CLI)
+        .current_dir(temp.path())
+        .args(["run", "--terminal"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"bad\n1\n2\n0\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(text.starts_with("Hello Pactern\n"));
+    assert!(text.contains("Show the answer"));
+    assert!(text.contains("The answer is 42."));
+    assert!(text.contains("Usage:"));
+    assert!(text.ends_with("Goodbye!\n"));
+    assert!(!text.contains("source_revision") && !text.contains("\"kind\""));
+    assert_eq!(output.stderr, b"Choose 1, 2, or 0.\n");
+    let output = run_in(temp.path(), &["run", "--terminal"]);
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .ends_with("Goodbye!\n")
+    );
+}
+
+#[test]
+fn terminal_grants_are_explicit_and_builds_retain_contracts() {
+    let temp = terminal_project();
+    let output = run_in(temp.path(), &["run", "--json"]);
+    assert!(!output.status.success());
+    let output = run_in(temp.path(), &["run", "--terminal", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    let diagnostic: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(
+        diagnostic["message"]
+            .as_str()
+            .unwrap()
+            .contains("cannot be combined")
+    );
+    let output = run_in(temp.path(), &["build", "--terminal", "--json"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["host"], "terminal/1");
+    assert_eq!(report["runtime_guards"], true);
+    assert!(!report["guard_map"].as_array().unwrap().is_empty());
+    assert!(temp.path().join("target/pactern.wasm").exists());
+    let output = run_in(temp.path(), &["run", "--", "--help"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("require --terminal"));
+}
+
+#[test]
+fn terminal_runtime_contract_failures_are_reported_without_json() {
+    let temp = terminal_project();
+    fs::write(
+        temp.path().join("contracts/main.pact.ptn"),
+        "module main; pact exit_guard for main {ensures result == 99;}",
+    )
+    .unwrap();
+    let output = run_in(temp.path(), &["run", "--terminal", "--", "answer"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.stdout, b"The answer is 42.\n");
+    assert_eq!(output.stderr, b"Program trapped: Postcondition\n");
+    let output = run_in(
+        temp.path(),
+        &["run", "--terminal", "--no-contracts", "--", "answer"],
+    );
+    assert!(output.status.success() && output.stderr.is_empty());
+}
+
 #[test]
 fn line_limits_reject_input_and_formatter_expansion_without_writes() {
     let temp = TempDir::new();

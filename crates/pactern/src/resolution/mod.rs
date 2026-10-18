@@ -170,7 +170,7 @@ impl Resolution {
 ///
 /// Returns partial indexes alongside all resolution diagnostics. Import names
 /// never cause filesystem traversal or dependency downloads. `std` and `host`
-/// remain unavailable until a trusted registry can supply their declarations.
+/// remain reserved; the trusted registry supplies quota and terminal declarations.
 /// Imports are file-scoped, while declaration namespaces and cycle detection
 /// combine implementation and contract files belonging to the same module.
 pub fn resolve(files: &[ParsedFile]) -> Resolution {
@@ -324,6 +324,12 @@ impl<'a> Resolver<'a> {
             ("host::quota::reserve", SymbolKind::Function),
             ("host::quota::commit", SymbolKind::Function),
             ("host::quota::rollback", SymbolKind::Function),
+            ("host::terminal::Terminal", SymbolKind::BuiltinType),
+            ("host::terminal::args", SymbolKind::Function),
+            ("host::terminal::arg_count", SymbolKind::Function),
+            ("host::terminal::read_line", SymbolKind::Function),
+            ("host::terminal::write", SymbolKind::Function),
+            ("host::terminal::write_error", SymbolKind::Function),
         ] {
             let id = self.add_symbol(name, kind, None, None, true, None);
             self.prelude.insert(name.into(), id);
@@ -589,7 +595,7 @@ impl<'a> Resolver<'a> {
                     );
                     continue;
                 }
-                if name == "host::quota" {
+                if matches!(name.as_str(), "host::quota" | "host::terminal") {
                     continue;
                 }
                 if let Some(target) = self.module_names.get(&name).copied().filter(|id| {

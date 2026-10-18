@@ -349,12 +349,30 @@ impl<'a> Checker<'a> {
             .find(|s| s.name == "host::quota::Txn")
             .unwrap()
             .id;
+        let terminal = self
+            .out
+            .resolution
+            .symbols
+            .iter()
+            .find(|s| s.name == "host::terminal::Terminal")
+            .unwrap()
+            .id;
         for symbol in &self.out.resolution.symbols {
             let (parameters, result) = match symbol.name.as_str() {
                 "host::quota::read" => (vec![Ty::Named(handle)], Ty::I64),
                 "host::quota::reserve" => (vec![Ty::Named(handle), Ty::I64], Ty::Bool),
                 "host::quota::commit" | "host::quota::rollback" => {
                     (vec![Ty::Named(handle)], Ty::Unit)
+                }
+                "host::terminal::args" => {
+                    (vec![Ty::Named(terminal)], Ty::List(Box::new(Ty::String)))
+                }
+                "host::terminal::arg_count" => (vec![Ty::Named(terminal)], Ty::I64),
+                "host::terminal::read_line" => {
+                    (vec![Ty::Named(terminal)], Ty::Option(Box::new(Ty::String)))
+                }
+                "host::terminal::write" | "host::terminal::write_error" => {
+                    (vec![Ty::Named(terminal), Ty::String], Ty::Unit)
                 }
                 _ => continue,
             };

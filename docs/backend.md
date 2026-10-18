@@ -13,7 +13,9 @@ statement ordering preserves left-to-right operand/argument evaluation. Entry
 points must be nongeneric; arguments are validated and embedded into an invocation
 artifact. This is not yet a reusable dynamically parameterized guest entry ABI.
 The default emitter rejects host calls and nonempty effect bounds. The explicit
-quota embedding API below supports only registered quota effects.
+quota embedding API below supports registered quota effects. The separate
+`emit_c_terminal` / `run_wasm_terminal` APIs provide explicitly granted terminal
+streams and dynamic process arguments; see [terminal programs](terminal.md).
 
 ## Build tools
 

@@ -1,6 +1,12 @@
-# Scoped quota host
+# Scoped host capabilities
 
-The static registry `quota/0.1.0` provides an opaque `host::quota::Txn` and four
+The static registry `quota+terminal/0.1.0` provides quota transactions and terminal
+I/O. Both use opaque, scoped handles supplied by the embedding host. See
+[terminal programs](terminal.md) for the terminal API and runnable example.
+
+## Quota host
+
+The quota adapter provides an opaque `host::quota::Txn` and four
 operations. Root handles come from the trusted host. Source cannot construct,
 copy, return, aggregate, compare, or instantiate generics with them.
 
@@ -15,8 +21,8 @@ copy, return, aggregate, compare, or instantiate generics with them.
 false. A nonpositive amount is a host error. `commit` and `rollback` consume the
 token. Dropping a transaction never commits. Declared effects are upper bounds,
 including for unreachable-looking calls and imports, and confer no authority.
-All registry effect categories are recognized statically; only the quota adapter
-is implemented. Missing host operations remain unresolved errors.
+All registry effect categories are recognized statically; quota and terminal
+adapters are implemented. Missing host operations remain unresolved errors.
 
 The ownership pass rejects use after a move on any incoming branch, outer-handle
 consumption in a loop, mutable handles, and overlapping exclusive borrows during

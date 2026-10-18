@@ -82,6 +82,9 @@ enum CliCommand {
     },
     /// Build an invocation-specialized WebAssembly artifact
     Build {
+        /// Build for the explicitly granted terminal capability host
+        #[arg(long)]
+        terminal: bool,
         #[arg(long, default_value = "wasm")]
         target: String,
         #[arg(long)]
@@ -94,8 +97,11 @@ enum CliCommand {
         no_contracts: bool,
         paths: Vec<PathBuf>,
     },
-    /// Compile and execute under the bounded, deny-import Wasm host
+    /// Compile and execute under a bounded Wasm host (terminal I/O is opt-in)
     Run {
+        /// Grant stdin, stdout, stderr and process arguments to a terminal entry
+        #[arg(long)]
+        terminal: bool,
         #[arg(long, default_value = "wasm")]
         target: String,
         #[arg(long)]
@@ -107,6 +113,9 @@ enum CliCommand {
         #[arg(long)]
         no_contracts: bool,
         paths: Vec<PathBuf>,
+        /// Program arguments, passed verbatim after -- (excluding executable name)
+        #[arg(last = true)]
+        program_args: Vec<String>,
     },
     /// Import sources into an atomic managed workspace with an external baseline
     Init { paths: Vec<PathBuf> },
@@ -290,9 +299,25 @@ fn run(args: Vec<OsString>) -> io::Result<u8> {
         Ok(Command::Version)
     } else {
         if let Some(command) = &cli.command {
+            if matches!(command, CliCommand::Run { terminal: true, .. }) && cli.json {
+                return report_error(
+                    &Diagnostic::invalid_arguments(
+                        "--terminal cannot be combined with --json; terminal programs own stdout and stderr",
+                    ),
+                    true,
+                );
+            }
             match project_commands::run(command, cli.store.as_deref(), cli.baseline.as_deref()) {
                 Ok(Some((output, status))) => {
-                    if cli.json {
+                    if matches!(command, CliCommand::Run { terminal: true, .. }) {
+                        if output["outcome"]["kind"] == "trap" {
+                            writeln!(
+                                io::stderr().lock(),
+                                "Program trapped: {}",
+                                output["outcome"]["trap"].as_str().unwrap_or("unknown")
+                            )?;
+                        }
+                    } else if cli.json {
                         write_json(&output)?;
                     } else {
                         writeln!(

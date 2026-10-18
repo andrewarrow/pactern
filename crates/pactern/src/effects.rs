@@ -6,7 +6,7 @@ use crate::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const REGISTRY_VERSION: &str = "quota/0.1.0";
+pub const REGISTRY_VERSION: &str = "quota+terminal/0.1.0";
 pub const EFFECTS: &[&str] = &[
     "db.read",
     "db.write",
@@ -17,9 +17,14 @@ pub const EFFECTS: &[&str] = &[
     "random.read",
     "env.read",
     "ai.infer",
+    "terminal.read",
+    "terminal.write",
 ];
+fn handle_name(name: &str) -> bool {
+    matches!(name, "host::quota::Txn" | "host::terminal::Terminal")
+}
 pub fn is_handle(checked: &CheckResult, ty: &ValueType) -> bool {
-    matches!(ty, ValueType::Named(id) if checked.resolution.symbols[id.0].name == "host::quota::Txn")
+    matches!(ty, ValueType::Named(id) if handle_name(&checked.resolution.symbols[id.0].name))
 }
 fn contains_handle(checked: &CheckResult, ty: &ValueType) -> bool {
     is_handle(checked, ty)
@@ -87,6 +92,11 @@ pub fn check(files: &[ParsedFile], checked: &CheckResult) -> Vec<TypeDiagnostic>
             "host::quota::reserve" => (vec!["db.write"], vec![true, false]),
             "host::quota::commit" => (vec!["db.write"], vec![false]),
             "host::quota::rollback" => (vec![], vec![false]),
+            "host::terminal::args" | "host::terminal::arg_count" => (vec!["env.read"], vec![true]),
+            "host::terminal::read_line" => (vec!["terminal.read"], vec![true]),
+            "host::terminal::write" | "host::terminal::write_error" => {
+                (vec!["terminal.write"], vec![true, false])
+            }
             _ => continue,
         };
         c.signatures.insert(
@@ -253,7 +263,7 @@ impl Checker<'_> {
     fn type_is_handle(&self, f: FileId, t: &Type) -> bool {
         self.references
             .get(&key(f, t.path.span))
-            .is_some_and(|id| self.checked.resolution.symbols[id.0].name == "host::quota::Txn")
+            .is_some_and(|id| handle_name(&self.checked.resolution.symbols[id.0].name))
             || t.arguments.iter().any(|t| self.type_is_handle(f, t))
     }
     fn handle_expr(&self, f: FileId, e: &Expr) -> Option<SymbolId> {

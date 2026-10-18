@@ -9,6 +9,8 @@ use crate::{
 };
 #[path = "backend_quota.rs"]
 mod quota;
+#[path = "backend_terminal.rs"]
+mod terminal;
 pub use quota::{QuotaArgument, QuotaExecution, emit_c_quota, run_wasm_quota};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -17,6 +19,7 @@ use std::{
     process::Command,
     sync::atomic::{AtomicU64, Ordering},
 };
+pub use terminal::{TerminalIo, emit_c_terminal, run_wasm_terminal};
 
 #[derive(Debug)]
 pub struct BackendError(pub String);
@@ -60,7 +63,7 @@ pub fn emit_c(
     limits: Limits,
 ) -> Result<String> {
     let args: Vec<_> = args.iter().map(Input::Value).collect();
-    emit(program, entry, &args, limits, false, false)
+    emit(program, entry, &args, limits, false, Bridge::Pure)
 }
 pub fn emit_c_guarded(
     program: &Program,
@@ -69,7 +72,36 @@ pub fn emit_c_guarded(
     limits: Limits,
 ) -> Result<String> {
     let args: Vec<_> = args.iter().map(Input::Value).collect();
-    emit(program, entry, &args, limits, true, false)
+    emit(program, entry, &args, limits, true, Bridge::Pure)
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Bridge {
+    Pure,
+    Quota,
+    Terminal,
+}
+impl Bridge {
+    fn handle(self) -> &'static str {
+        match self {
+            Self::Pure => "",
+            Self::Quota => "host::quota::Txn",
+            Self::Terminal => "host::terminal::Terminal",
+        }
+    }
+    fn prefix(self) -> &'static str {
+        match self {
+            Self::Quota => "pt_quota",
+            Self::Terminal => "pt_terminal",
+            Self::Pure => "",
+        }
+    }
+    fn permits_effect(self, effect: &str) -> bool {
+        match self {
+            Self::Pure => false,
+            Self::Quota => ["db.read", "db.write"].contains(&effect),
+            Self::Terminal => ["terminal.read", "terminal.write", "env.read"].contains(&effect),
+        }
+    }
 }
 enum Input<'a> {
     Value(&'a Value),
@@ -81,7 +113,7 @@ fn emit(
     args: &[Input<'_>],
     limits: Limits,
     guarded: bool,
-    quota: bool,
+    bridge: Bridge,
 ) -> Result<String> {
     let Some(d) = program.declarations().iter().find(|d| d.symbol == entry) else {
         return Err(BackendError("unknown entry point".into()));
@@ -105,14 +137,16 @@ fn emit(
             .get(id)
             .is_some_and(|t| match v {
                 Input::Value(v)=>crate::interpreter::accepts(program,t,v,0),
-                Input::HandleSlot(_)=>quota && matches!(t,crate::typing::ValueType::Named(id) if program.resolution().symbols[id.0].kind==SymbolKind::BuiltinType && program.resolution().symbols[id.0].name=="host::quota::Txn"),
+                Input::HandleSlot(_)=>bridge != Bridge::Pure && matches!(t,crate::typing::ValueType::Named(id) if program.resolution().symbols[id.0].kind==SymbolKind::BuiltinType && program.resolution().symbols[id.0].name==bridge.handle()),
             })
     }) {
         return Err(BackendError("entry argument type mismatch".into()));
     }
     let mut out = include_str!("../../../runtime/pactern.c").to_string();
-    if quota {
-        out.push_str(include_str!("../../../runtime/quota.c"));
+    match bridge {
+        Bridge::Quota => out.push_str(include_str!("../../../runtime/quota.c")),
+        Bridge::Terminal => out.push_str(include_str!("../../../runtime/terminal.c")),
+        Bridge::Pure => {}
     }
     for d in program.declarations() {
         if let DeclarationKind::Function {
@@ -122,10 +156,8 @@ fn emit(
         } = &d.kind
         {
             if effects.as_ref().is_some_and(|e| {
-                e.iter().any(|e| {
-                    !quota
-                        || !["db::read", "db::write", "db.read", "db.write"].contains(&e.as_str())
-                })
+                e.iter()
+                    .any(|e| !bridge.permits_effect(&e.replace("::", ".")))
             }) {
                 return Err(BackendError(
                     "effectful functions require a capability host bridge".into(),
@@ -149,10 +181,10 @@ fn emit(
             parameters, body, ..
         } = &d.kind
         {
-            let mut e = Emitter::new(program, quota);
+            let mut e = Emitter::new(program, bridge);
             for p in parameters {
                 e.line(format!("r[{}]=a{};", p.0, p.0));
-                if quota && e.is_handle(*p) && !program.borrowed_parameters().contains(p) {
+                if e.is_handle(*p) && !program.borrowed_parameters().contains(p) {
                     e.owned.insert(*p);
                 }
             }
@@ -185,14 +217,17 @@ fn emit(
             writeln!(out,"static V f{}({}) {{\n if(depth>=max_depth || active_slots>32768-{}){{fail(4);return unit();}} ++depth; active_slots+={};\n V r[{}]={{0}}; Roots frame={{roots,r,{}}}; roots=&frame;\n{}\n}}",d.symbol.0,parameters.iter().map(|p|format!("V a{}",p.0)).collect::<Vec<_>>().join(","),e.next,e.next,e.next,e.next,e.code).unwrap();
         }
     }
-    let mut e = Emitter::new(program, quota);
+    let mut e = Emitter::new(program, bridge);
     let mut input = vec![];
     for v in args {
         let slot = match v {
             Input::Value(v) => e.value(v)?,
             Input::HandleSlot(slot) => {
                 let n = e.slot();
-                e.line(format!("r[{n}]=scalar(7,pt_quota_root({slot}));"));
+                e.line(format!(
+                    "r[{n}]=scalar(7,{}_root({slot}));",
+                    bridge.prefix()
+                ));
                 n
             }
         };
@@ -226,13 +261,13 @@ struct Emitter<'a> {
     next: usize,
     result: usize,
     labels: usize,
-    quota: bool,
+    bridge: Bridge,
     owned: BTreeSet<SymbolId>,
     scopes: Vec<Vec<SymbolId>>,
     loop_scopes: Vec<usize>,
 }
 impl<'a> Emitter<'a> {
-    fn new(program: &'a Program, quota: bool) -> Self {
+    fn new(program: &'a Program, bridge: Bridge) -> Self {
         let result = program.resolution().symbols.len();
         Self {
             program,
@@ -240,7 +275,7 @@ impl<'a> Emitter<'a> {
             next: result + 1,
             result,
             labels: 0,
-            quota,
+            bridge,
             owned: BTreeSet::new(),
             scopes: vec![],
             loop_scopes: vec![],
@@ -259,14 +294,17 @@ impl<'a> Emitter<'a> {
         self.line("if(trap_code)goto cleanup;");
     }
     fn is_handle(&self, id: SymbolId) -> bool {
-        self.quota
-            && matches!(self.program.symbol_types().get(&id),Some(crate::typing::ValueType::Named(t)) if self.program.resolution().symbols[t.0].name=="host::quota::Txn")
+        self.bridge != Bridge::Pure
+            && matches!(self.program.symbol_types().get(&id),Some(crate::typing::ValueType::Named(t)) if self.program.resolution().symbols[t.0].name==self.bridge.handle())
     }
     fn release(&mut self, ids: Vec<SymbolId>) {
         for id in ids.into_iter().rev() {
             self.line(format!(
-                "if(r[{}].tag==7){{pt_quota_release((U32)r[{}].n);r[{}]=unit();}}",
-                id.0, id.0, id.0
+                "if(r[{}].tag==7){{{}_release((U32)r[{}].n);r[{}]=unit();}}",
+                id.0,
+                self.bridge.prefix(),
+                id.0,
+                id.0
             ));
         }
     }
@@ -473,7 +511,7 @@ impl<'a> Emitter<'a> {
                     .declarations()
                     .iter()
                     .any(|d| d.symbol == *function);
-                if external && !self.quota {
+                if external && self.bridge == Bridge::Pure {
                     return Err(BackendError(
                         "external host calls require a capability host bridge".into(),
                     ));
@@ -482,9 +520,16 @@ impl<'a> Emitter<'a> {
                 for (i, e) in arguments.iter().enumerate() {
                     let borrowed = if external {
                         i == 0
-                            && ["host::quota::read", "host::quota::reserve"].contains(
-                                &self.program.resolution().symbols[function.0].name.as_str(),
-                            )
+                            && [
+                                "host::quota::read",
+                                "host::quota::reserve",
+                                "host::terminal::args",
+                                "host::terminal::arg_count",
+                                "host::terminal::read_line",
+                                "host::terminal::write",
+                                "host::terminal::write_error",
+                            ]
+                            .contains(&self.program.resolution().symbols[function.0].name.as_str())
                     } else {
                         self.program.declarations().iter().find(|d|d.symbol==*function).is_some_and(|d|matches!(&d.kind,DeclarationKind::Function{parameters,..} if parameters.get(i).is_some_and(|p|self.program.borrowed_parameters().contains(p))))
                     };
@@ -495,7 +540,45 @@ impl<'a> Emitter<'a> {
                     let token = inputs
                         .first()
                         .ok_or_else(|| BackendError("host call is missing a handle".into()))?;
+                    if !name.starts_with(match self.bridge {
+                        Bridge::Quota => "host::quota::",
+                        Bridge::Terminal => "host::terminal::",
+                        Bridge::Pure => "",
+                    }) {
+                        return Err(BackendError(
+                            "host call requires a different capability bridge".into(),
+                        ));
+                    }
                     match name.as_str() {
+                        "host::terminal::args" => {
+                            self.line(format!("r[{n}]=terminal_args((U32)r[{token}].n);"))
+                        }
+                        "host::terminal::arg_count" => self.line(format!(
+                            "r[{n}]=scalar(2,pt_terminal_argc((U32)r[{token}].n));"
+                        )),
+                        "host::terminal::read_line" => {
+                            let variant = |name: &str| {
+                                self.program
+                                    .resolution()
+                                    .symbols
+                                    .iter()
+                                    .find(|s| {
+                                        s.kind == SymbolKind::BuiltinVariant && s.name == name
+                                    })
+                                    .unwrap()
+                                    .id
+                                    .0
+                            };
+                            self.line(format!(
+                                "r[{n}]=terminal_read_line((U32)r[{token}].n,{},{});",
+                                variant("Some"),
+                                variant("None")
+                            ));
+                        }
+                        "host::terminal::write" | "host::terminal::write_error" => {
+                            let text = inputs[1];
+                            self.line(format!("pt_terminal_write((U32)r[{token}].n,{},(U32)(unsigned long)(object(r[{text}])+1),object(r[{text}])->len);r[{n}]=unit();", u8::from(name.ends_with("write_error"))));
+                        }
                         "host::quota::read" => self.line(format!(
                             "r[{n}]=scalar(2,pt_quota_read((U32)r[{token}].n));"
                         )),

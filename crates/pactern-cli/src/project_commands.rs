@@ -573,6 +573,7 @@ pub fn run(
             )
         }
         CliCommand::Build {
+            terminal: true,
             paths,
             target,
             entry: name,
@@ -581,13 +582,121 @@ pub fn run(
             no_contracts,
         }
         | CliCommand::Run {
+            terminal: true,
+            paths,
+            target,
+            entry: name,
+            args,
+            output,
+            no_contracts,
+            ..
+        } => {
+            if target != "wasm" || args.trim() != "[]" {
+                return Err(Diagnostic::invalid_arguments(
+                    "terminal entries use --target wasm and a single host-issued Terminal parameter; pass program arguments after --",
+                ));
+            }
+            let source = load(paths, store, baseline)?;
+            let p = program(&source)?;
+            let id = entry(&p, name.as_deref())?;
+            if !p.declarations().iter().any(|d| {
+                d.symbol == id
+                    && matches!(
+                        &d.kind,
+                        DeclarationKind::Function {
+                            result: ValueType::I64 | ValueType::Unit,
+                            ..
+                        }
+                    )
+            }) {
+                return Err(Diagnostic::invalid_arguments(
+                    "terminal entry must return I64 (exit code 0..255) or Unit",
+                ));
+            }
+            let (c, wasm, guards) = if *no_contracts {
+                let c = backend::emit_c_terminal(&p, id, Limits::default(), false).map_err(tool)?;
+                let wasm = backend::compile_wasm(&c).map_err(tool)?;
+                (c, wasm, vec![])
+            } else {
+                let artifact =
+                    pacts::compile_terminal_guarded(&p, source.revision(), id, Limits::default())
+                        .map_err(tool)?;
+                (artifact.c_source, artifact.wasm, artifact.guards)
+            };
+            let destination = if matches!(command, CliCommand::Build { .. }) {
+                Some(
+                    output
+                        .as_deref()
+                        .unwrap_or(Path::new("target/pactern.wasm")),
+                )
+            } else {
+                output.as_deref()
+            };
+            if let Some(output) = destination {
+                validate_artifact_output(output, &source, store, baseline)?;
+                write(output, &wasm)?;
+                write(&output.with_extension("c"), c.as_bytes())?;
+            }
+            if let CliCommand::Run { program_args, .. } = command {
+                let stdin = std::io::stdin();
+                let stdout = std::io::stdout();
+                let stderr = std::io::stderr();
+                let execution = backend::run_wasm_terminal(
+                    &wasm,
+                    HostLimits::default(),
+                    backend::TerminalIo {
+                        input: &mut stdin.lock(),
+                        output: &mut stdout.lock(),
+                        error: &mut stderr.lock(),
+                        arguments: program_args,
+                        byte_limit: 1024 * 1024,
+                    },
+                )
+                .map_err(tool)?;
+                let (outcome, status) = match execution {
+                    Execution::Value(Value::I64(code)) => {
+                        let status = u8::try_from(code)
+                            .map_err(|_| tool("terminal exit code must be in 0..255"))?;
+                        (json!({"kind":"return","value":code.to_string()}), status)
+                    }
+                    Execution::Value(Value::Unit) => (json!({"kind":"return","value":null}), 0),
+                    Execution::Trap { kind, cause } => (
+                        json!({"kind":"trap","trap":format!("{kind:?}"),"cause":cause.map(|c|format!("{c:?}"))}),
+                        1,
+                    ),
+                    _ => return Err(tool("invalid terminal entry result")),
+                };
+                (json!({"kind":"execution","outcome":outcome}), status)
+            } else {
+                (
+                    json!({"kind":"build","protocol_version":pactern::PROTOCOL_VERSION,"source_revision":source.revision(),"target":"wasm32-unknown-unknown","host":"terminal/1","artifact":destination,"artifact_hash":pactern::semantic::digest(&wasm),"artifact_bytes":wasm.len(),"compiler":backend::compiler_version().map_err(tool)?,"runtime_guards":!no_contracts,"guard_map":guards,"invocation_specialized":true}),
+                    0,
+                )
+            }
+        }
+        CliCommand::Build {
+            paths,
+            target,
+            entry: name,
+            args,
+            output,
+            no_contracts,
+            ..
+        }
+        | CliCommand::Run {
             paths,
             entry: name,
             args,
             output,
             target,
             no_contracts,
+            ..
         } => {
+            if matches!(command, CliCommand::Run { program_args, .. } if !program_args.is_empty()) {
+                return Err(Diagnostic::invalid_arguments(
+                    "program arguments after -- require --terminal",
+                ));
+            }
             if target != "wasm" {
                 return Err(Diagnostic::invalid_arguments(
                     "only --target wasm is supported",
