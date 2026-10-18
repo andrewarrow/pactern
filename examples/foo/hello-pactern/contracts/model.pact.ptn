@@ -1,0 +1,75 @@
+module model;
+pact blank_slot for blank {
+    ensures result.id == 0 && result.title == "";
+    ensures result.spent == 0 && result.status == 0;
+}
+pact new_task for task {
+    ensures result.title == title && result.estimate == estimate;
+    ensures result.priority == priority && result.due == due;
+    ensures result.id == 0 && result.project == 0 && result.spent == 0 && result.status == 0 && result.tag == 0;
+}
+pact remaining_effort for remaining {
+    requires valid(task);
+    ensures result >= 0 && result <= task.estimate;
+    ensures task.status != 3 || result == 0;
+    ensures task.spent < task.estimate || result == 0;
+    ensures task.status == 3 || task.spent >= task.estimate || result == task.estimate - task.spent;
+}
+pact overdue_rules for overdue {
+    ensures result == (task.status != 3 && task.due < day);
+}
+pact id_preserves_other_fields for with_id {
+    ensures result.id == id;
+    ensures result.title == task.title;
+    ensures result.project == task.project;
+    ensures result.estimate == task.estimate;
+    ensures result.spent == task.spent;
+    ensures result.priority == task.priority;
+    ensures result.due == task.due;
+    ensures result.status == task.status;
+    ensures result.tag == task.tag;
+}
+pact status_preserves_other_fields for with_status {
+    ensures result.id == task.id;
+    ensures result.title == task.title;
+    ensures result.project == task.project;
+    ensures result.estimate == task.estimate;
+    ensures result.spent == task.spent;
+    ensures result.priority == task.priority;
+    ensures result.due == task.due;
+    ensures result.status == status;
+    ensures result.tag == task.tag;
+}
+pact spent_preserves_other_fields for with_spent {
+    ensures result.id == task.id;
+    ensures result.title == task.title;
+    ensures result.project == task.project;
+    ensures result.estimate == task.estimate;
+    ensures result.spent == spent;
+    ensures result.priority == task.priority;
+    ensures result.due == task.due;
+    ensures result.status == task.status;
+    ensures result.tag == task.tag;
+}
+pact priority_preserves_other_fields for with_priority {
+    ensures result.id == task.id;
+    ensures result.title == task.title;
+    ensures result.project == task.project;
+    ensures result.estimate == task.estimate;
+    ensures result.spent == task.spent;
+    ensures result.priority == priority;
+    ensures result.due == task.due;
+    ensures result.status == task.status;
+    ensures result.tag == task.tag;
+}
+pact due_preserves_other_fields for with_due {
+    ensures result.id == task.id;
+    ensures result.title == task.title;
+    ensures result.project == task.project;
+    ensures result.estimate == task.estimate;
+    ensures result.spent == task.spent;
+    ensures result.priority == task.priority;
+    ensures result.due == due;
+    ensures result.status == task.status;
+    ensures result.tag == task.tag;
+}

@@ -1,0 +1,65 @@
+module main;
+pact answer_is_42 for answer {
+    ensures result == "The answer is 42.\n";
+}
+pact selection_rules for selection {
+    ensures result >= -1 && result <= 28;
+    ensures choice != "1" || result == 1;
+    ensures choice != "tasks" || result == 1;
+    ensures choice != "list" || result == 1;
+    ensures choice != "2" || result == 2;
+    ensures choice != "add" || result == 2;
+    ensures choice != "3" || result == 3;
+    ensures choice != "status" || result == 3;
+    ensures choice != "4" || result == 4;
+    ensures choice != "log" || result == 4;
+    ensures choice != "5" || result == 5;
+    ensures choice != "delete" || result == 5;
+    ensures choice != "6" || result == 6;
+    ensures choice != "templates" || result == 6;
+    ensures choice != "7" || result == 7;
+    ensures choice != "reports" || result == 7;
+    ensures choice != "8" || result == 8;
+    ensures choice != "forecast" || result == 8;
+    ensures choice != "9" || result == 9;
+    ensures choice != "settings" || result == 9;
+    ensures choice != "10" || result == 10;
+    ensures choice != "advance" || result == 10;
+    ensures choice != "11" || result == 11;
+    ensures choice != "reprioritize" || result == 11;
+    ensures choice != "12" || result == 12;
+    ensures choice != "due" || result == 12;
+    ensures choice != "13" || result == 13;
+    ensures choice != "clear" || result == 13;
+    ensures choice != "14" || result == 14;
+    ensures choice != "check" || result == 14;
+    ensures choice != "selftest" || result == 14;
+    ensures choice != "15" || result == 15;
+    ensures choice != "help" || result == 15;
+    ensures choice != "--help" || result == 15;
+    ensures choice != "-h" || result == 15;
+    ensures choice != "16" || result == 16;
+    ensures choice != "demo" || result == 16;
+    ensures choice != "answer" || result == 17;
+    ensures choice != "summary" || result == 18;
+    ensures choice != "capacity" || result == 19;
+    ensures choice != "overdue" || result == 20;
+    ensures choice != "blocked" || result == 21;
+    ensures choice != "completed" || result == 22;
+    ensures choice != "projects" || result == 23;
+    ensures choice != "categories" || result == 24;
+    ensures choice != "next" || result == 25;
+    ensures choice != "priority" || result == 26;
+    ensures choice != "week" || result == 27;
+    ensures choice != "open" || result == 28;
+    ensures choice != "0" || result == 0;
+    ensures choice != "q" || result == 0;
+    ensures choice != "quit" || result == 0;
+    ensures choice != "exit" || result == 0;
+}
+pact help_contract for help_text {
+    ensures result == "Pactern Planner\n\nUsage: pactern run --terminal -- [COMMAND]\n       pactern run --terminal -- template NUMBER\n\nRun with no command for the interactive menu. --empty starts an empty session.\nEverything is written in Pactern. The terminal host prints human-readable output.\nChanges live only for this session; restarting restores the five-task demo.\n\nTask commands (interactive):\n  add              Create a task with estimated hours, priority, and due day\n  status           Set backlog, active, blocked, or done\n  log              Record hours against an unfinished task\n  delete           Delete a task after confirmation\n  reprioritize     Change task priority (1 highest, 5 lowest)\n  due              Change the absolute planning due day\n\nReports (print and exit):\n  tasks, open      List all tasks or unfinished tasks\n  summary          Show task counts and effort totals\n  capacity         Show a five-day forecast using current team settings\n  overdue, blocked, completed, priority, week\n  projects, categories, next\n\nPlanning and session commands:\n  templates        List the 22 project templates\n  template NUMBER  Preview one template without importing it\n  reports          Choose a report interactively\n  forecast         Explore people, hours, days, overhead, and effort buffer\n  settings         Change team size and daily focus hours\n  advance          Advance the planning day\n  clear, demo      Clear the board or restore the demo after confirmation\n  check            Run the built-in regression scenarios\n  answer           Show the original answer\n  help, -h, --help  Show this help\n  exit             Exit successfully\n\nIn menus, enter a number or command. During a prompt, back cancels and q exits.\nNumbers must be whole decimal values in 0..365, with no spaces or leading zeros.\nCapacity: 24 tasks, 365 assigned IDs per session, 20 people, 12 focus hours/day.\nTask estimates: 1..80 hours. Due days: 0..365. Logged hours: at most 365/task.\nFinishing a task is explicit: logging its estimate does not mark it done.\nTemplate imports are atomic and keep their original absolute due days.\nForecasts include blocked work; dependencies may delay actual delivery.\nThe toolchain's fuel and terminal byte budgets bound each session.\n\nExamples:\n  pactern run --terminal\n  pactern run --terminal -- --help\n  pactern run --terminal -- summary\n  pactern run --terminal -- template 12\n  pactern run --terminal -- --empty\n";
+}
+pact cli_exit_codes for main {
+    ensures result == 0 || result == 1 || result == 2;
+}

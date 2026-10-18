@@ -592,6 +592,45 @@ fn terminal_grants_are_explicit_and_builds_retain_contracts() {
 }
 
 #[test]
+fn terminal_sessions_allow_more_work_than_a_pure_invocation() {
+    let temp = terminal_project();
+    let calculation = "let mut index = 0; let mut total = 0; while (index < 10000) { total = total + index; index = index + 1; }";
+    fs::write(
+        temp.path().join("src/main.ptn"),
+        format!(
+            "module main; import host::terminal; pub fn main(term: host::terminal::Terminal) -> I64 effects {{terminal.write}} {{ {calculation} if (total != 49995000) {{return 1;}} host::terminal::write(borrow term, \"Calculation complete.\\n\"); return 0; }}"
+        ),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("contracts/main.pact.ptn"),
+        "module main; pact success for main {ensures result == 0;}",
+    )
+    .unwrap();
+    for extra in [vec![], vec!["--no-contracts"]] {
+        let args = [vec!["run", "--terminal"], extra].concat();
+        let output = run_in(temp.path(), &args);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, b"Calculation complete.\n");
+        assert!(output.stderr.is_empty());
+    }
+
+    fs::write(
+        temp.path().join("src/main.ptn"),
+        format!("module main; pub fn main() -> I64 {{ {calculation} return 0; }}"),
+    )
+    .unwrap();
+    let output = run_in(temp.path(), &["run", "--json"]);
+    assert_eq!(output.status.code(), Some(1));
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["outcome"]["trap"], "ExecutionLimit");
+}
+
+#[test]
 fn terminal_runtime_contract_failures_are_reported_without_json() {
     let temp = terminal_project();
     fs::write(

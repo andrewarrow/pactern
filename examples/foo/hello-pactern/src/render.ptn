@@ -1,0 +1,57 @@
+module render;
+pub struct Piece {
+    text: String,
+    value: I64,
+    numeric: Bool
+}
+pub struct Line {
+    pieces: List<Piece>,
+    count: I64
+}
+pub struct View {
+    lines: List<Line>,
+    count: I64,
+    prompt: String
+}
+pub fn text(text: String) -> Piece {
+    return Piece {
+        text: text,
+        value: 0,
+        numeric: false
+    };
+}
+pub fn number(value: I64) -> Piece {
+    return Piece {
+        text: "",
+        value: value,
+        numeric: true
+    };
+}
+pub fn line(content: String) -> Line {
+    return Line {
+        pieces: [text(content)],
+        count: 1
+    };
+}
+pub fn value(label: String, value: I64, unit: String) -> Line {
+    return Line {
+        pieces: [text(label), number(value), text(unit)],
+        count: 3
+    };
+}
+pub fn pair(label: String, first: I64, middle: String, second: I64, tail: String) -> Line {
+    return Line {
+        pieces: [text(label), number(first), text(middle), number(second), text(tail)],
+        count: 5
+    };
+}
+pub fn prompt(message: String, prompt: String) -> View {
+    return View {
+        lines: [line(message)],
+        count: 1,
+        prompt: prompt
+    };
+}
+pub fn notice(message: String) -> View {
+    return prompt(message, "\nPress Enter for the menu (q exits): ");
+}

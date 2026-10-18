@@ -1,0 +1,25 @@
+module ui;
+pact menu_layout for menu {
+    ensures result.count == 9;
+}
+pact task_list_layout for tasks {
+    ensures result.count == 1 || result.count == 26;
+}
+pact overview_layout for summary {
+    ensures result.count == 10;
+}
+pact scenario_layout for forecast {
+    ensures result.count == 12;
+}
+pact template_list_layout for templates {
+    ensures result.count == 1;
+}
+pact preview_layout for preview {
+    ensures result.count == 14;
+}
+pact project_report_layout for projects {
+    ensures result.count == 1 || result.count == 24;
+}
+pact category_report_layout for categories {
+    ensures result.count == 6;
+}

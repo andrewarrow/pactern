@@ -1,0 +1,107 @@
+module flow;
+import model;
+import render;
+import ui;
+import usage;
+pub fn stage(command: I64) -> I64 {
+    return match (command) {
+        2 => 20,
+        3 => 30,
+        4 => 40,
+        5 => 50,
+        6 => 60,
+        7 => 70,
+        8 => 80,
+        9 => 90,
+        10 => 100,
+        11 => 110,
+        12 => 120,
+        13 => 130,
+        16 => 160,
+        _ => 1
+    };
+}
+pub fn view(board: model::Board, command: I64) -> render::View {
+    if (command == 1) {
+        return ui::tasks(board, 0);
+    }
+    if (command == 2) {
+        return render::prompt("\nADD TASK (back cancels without adding anything)\n", "Title: ");
+    }
+    if (command == 3) {
+        return render::prompt("\nCHANGE TASK STATUS\n", "Task ID: ");
+    }
+    if (command == 4) {
+        return render::prompt("\nLOG HOURS\n", "Task ID: ");
+    }
+    if (command == 5) {
+        return render::prompt("\nDELETE TASK\n", "Task ID: ");
+    }
+    if (command == 6) {
+        return ui::templates();
+    }
+    if (command == 7) {
+        return ui::reports();
+    }
+    if (command == 8) {
+        return render::prompt("\nCAPACITY SCENARIO (does not change team settings)\n", "People (1..20): ");
+    }
+    if (command == 9) {
+        return render::prompt("\nTEAM SETTINGS\n", "People (1..20): ");
+    }
+    if (command == 10) {
+        return render::prompt("\nADVANCE PLANNING DAY\n", "Days to advance (1..365, total day at most 365): ");
+    }
+    if (command == 11) {
+        return render::prompt("\nCHANGE PRIORITY\n", "Task ID: ");
+    }
+    if (command == 12) {
+        return render::prompt("\nCHANGE DUE DAY\n", "Task ID: ");
+    }
+    if (command == 13) {
+        return render::prompt("\nClear all tasks and reset settings?\n", "Type clear to confirm (back cancels): ");
+    }
+    if (command == 15) {
+        return render::notice(usage::text());
+    }
+    if (command == 16) {
+        return render::prompt("\nReplace all session data with the five-task demo?\n", "Type demo to confirm (back cancels): ");
+    }
+    if (command == 17) {
+        return render::notice("The answer is 42.\n");
+    }
+    if (command == 18) {
+        return ui::summary(board);
+    }
+    if (command == 19) {
+        return ui::forecast(board, board.people, board.daily_hours, 5, 20, 15);
+    }
+    if (command == 20) {
+        return ui::tasks(board, 4);
+    }
+    if (command == 21) {
+        return ui::tasks(board, 2);
+    }
+    if (command == 22) {
+        return ui::tasks(board, 3);
+    }
+    if (command == 23) {
+        return ui::projects(board);
+    }
+    if (command == 24) {
+        return ui::categories(board);
+    }
+    if (command == 25) {
+        return ui::next(board);
+    }
+    if (command == 26) {
+        return ui::tasks(board, 5);
+    }
+    if (command == 27) {
+        return ui::tasks(board, 6);
+    }
+    if (command == 28) {
+        return ui::tasks(board, 1);
+    }
+    return render::notice("Unknown command. Use help to see the available commands.\n");
+}

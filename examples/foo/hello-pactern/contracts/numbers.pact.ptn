@@ -1,0 +1,24 @@
+module numbers;
+pact decimal_range for parse {
+    ensures match (result) {
+        Option::Some(value) => value >= 0 && value <= 365,
+        Option::None => true
+    };
+    ensures text != "0" || match (result) {
+        Option::Some(value) => value == 0,
+        Option::None => false
+    };
+    ensures text != "365" || match (result) {
+        Option::Some(value) => value == 365,
+        Option::None => false
+    };
+    ensures (text != "" && text != "01" && text != "366" && text != "-1" && text != " 1") || match (result) {
+        Option::Some(_) => false,
+        Option::None => true
+    };
+}
+pact digit_domain for digit {
+    requires value >= 0 && value <= 9;
+    ensures value != 0 || result == "0";
+    ensures value != 9 || result == "9";
+}

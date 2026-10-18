@@ -1,0 +1,250 @@
+module checks;
+pact empty_board_regression for empty_board {
+    ensures result;
+}
+pact add_assigns_id_regression for add_assigns_id {
+    ensures result;
+}
+pact add_rejects_bad_estimate_regression for add_rejects_bad_estimate {
+    ensures result;
+}
+pact add_rejects_empty_title_regression for add_rejects_empty_title {
+    ensures result;
+}
+pact log_preserves_status_regression for log_preserves_status {
+    ensures result;
+}
+pact completion_clears_remaining_regression for completion_clears_remaining {
+    ensures result;
+}
+pact completed_rejects_logging_regression for completed_rejects_logging {
+    ensures result;
+}
+pact overrun_never_negative_remaining_regression for overrun_never_negative_remaining {
+    ensures result;
+}
+pact delete_preserves_survivor_ids_regression for delete_preserves_survivor_ids {
+    ensures result;
+}
+pact delete_unknown_is_noop_regression for delete_unknown_is_noop {
+    ensures result;
+}
+pact unknown_status_is_noop_regression for unknown_status_is_noop {
+    ensures result;
+}
+pact priority_preserves_effort_regression for priority_preserves_effort {
+    ensures result;
+}
+pact due_preserves_priority_regression for due_preserves_priority {
+    ensures result;
+}
+pact settings_apply_regression for settings_apply {
+    ensures result;
+}
+pact settings_reject_zero_regression for settings_reject_zero {
+    ensures result;
+}
+pact day_boundary_regression for day_boundary {
+    ensures result;
+}
+pact overdue_excludes_today_regression for overdue_excludes_today {
+    ensures result;
+}
+pact overdue_excludes_done_regression for overdue_excludes_done {
+    ensures result;
+}
+pact summary_totals_regression for summary_totals {
+    ensures result;
+}
+pact blocked_is_not_actionable_regression for blocked_is_not_actionable {
+    ensures result;
+}
+pact priority_wins_when_due_equal_regression for priority_wins_when_due_equal {
+    ensures result;
+}
+pact filter_completed_regression for filter_completed {
+    ensures result;
+}
+pact filter_due_week_regression for filter_due_week {
+    ensures result;
+}
+pact empty_summary_regression for empty_summary {
+    ensures result;
+}
+pact decimal_parser_regression for decimal_parser {
+    ensures result;
+}
+pact arithmetic_1_regression for arithmetic_1 {
+    ensures result;
+}
+pact arithmetic_2_regression for arithmetic_2 {
+    ensures result;
+}
+pact arithmetic_3_regression for arithmetic_3 {
+    ensures result;
+}
+pact arithmetic_4_regression for arithmetic_4 {
+    ensures result;
+}
+pact arithmetic_5_regression for arithmetic_5 {
+    ensures result;
+}
+pact arithmetic_6_regression for arithmetic_6 {
+    ensures result;
+}
+pact arithmetic_7_regression for arithmetic_7 {
+    ensures result;
+}
+pact arithmetic_8_regression for arithmetic_8 {
+    ensures result;
+}
+pact arithmetic_9_regression for arithmetic_9 {
+    ensures result;
+}
+pact arithmetic_10_regression for arithmetic_10 {
+    ensures result;
+}
+pact arithmetic_11_regression for arithmetic_11 {
+    ensures result;
+}
+pact arithmetic_12_regression for arithmetic_12 {
+    ensures result;
+}
+pact arithmetic_13_regression for arithmetic_13 {
+    ensures result;
+}
+pact arithmetic_14_regression for arithmetic_14 {
+    ensures result;
+}
+pact arithmetic_15_regression for arithmetic_15 {
+    ensures result;
+}
+pact arithmetic_16_regression for arithmetic_16 {
+    ensures result;
+}
+pact arithmetic_17_regression for arithmetic_17 {
+    ensures result;
+}
+pact arithmetic_18_regression for arithmetic_18 {
+    ensures result;
+}
+pact arithmetic_19_regression for arithmetic_19 {
+    ensures result;
+}
+pact arithmetic_20_regression for arithmetic_20 {
+    ensures result;
+}
+pact arithmetic_21_regression for arithmetic_21 {
+    ensures result;
+}
+pact arithmetic_22_regression for arithmetic_22 {
+    ensures result;
+}
+pact arithmetic_23_regression for arithmetic_23 {
+    ensures result;
+}
+pact arithmetic_24_regression for arithmetic_24 {
+    ensures result;
+}
+pact arithmetic_25_regression for arithmetic_25 {
+    ensures result;
+}
+pact arithmetic_26_regression for arithmetic_26 {
+    ensures result;
+}
+pact arithmetic_27_regression for arithmetic_27 {
+    ensures result;
+}
+pact arithmetic_28_regression for arithmetic_28 {
+    ensures result;
+}
+pact arithmetic_29_regression for arithmetic_29 {
+    ensures result;
+}
+pact arithmetic_30_regression for arithmetic_30 {
+    ensures result;
+}
+pact arithmetic_31_regression for arithmetic_31 {
+    ensures result;
+}
+pact arithmetic_32_regression for arithmetic_32 {
+    ensures result;
+}
+pact arithmetic_33_regression for arithmetic_33 {
+    ensures result;
+}
+pact arithmetic_34_regression for arithmetic_34 {
+    ensures result;
+}
+pact arithmetic_35_regression for arithmetic_35 {
+    ensures result;
+}
+pact arithmetic_36_regression for arithmetic_36 {
+    ensures result;
+}
+pact arithmetic_37_regression for arithmetic_37 {
+    ensures result;
+}
+pact arithmetic_38_regression for arithmetic_38 {
+    ensures result;
+}
+pact arithmetic_39_regression for arithmetic_39 {
+    ensures result;
+}
+pact arithmetic_40_regression for arithmetic_40 {
+    ensures result;
+}
+pact arithmetic_41_regression for arithmetic_41 {
+    ensures result;
+}
+pact arithmetic_42_regression for arithmetic_42 {
+    ensures result;
+}
+pact arithmetic_43_regression for arithmetic_43 {
+    ensures result;
+}
+pact arithmetic_44_regression for arithmetic_44 {
+    ensures result;
+}
+pact arithmetic_45_regression for arithmetic_45 {
+    ensures result;
+}
+pact arithmetic_46_regression for arithmetic_46 {
+    ensures result;
+}
+pact arithmetic_47_regression for arithmetic_47 {
+    ensures result;
+}
+pact arithmetic_48_regression for arithmetic_48 {
+    ensures result;
+}
+pact arithmetic_49_regression for arithmetic_49 {
+    ensures result;
+}
+pact arithmetic_50_regression for arithmetic_50 {
+    ensures result;
+}
+pact failure_count for run {
+    ensures result >= 0 && result <= 82;
+}
+pact fractional_forecast_regression for fractional_day_forecast {
+    ensures result;
+}
+pact zero_capacity_regression for zero_capacity_forecast {
+    ensures result;
+}
+pact atomic_import_regression for invalid_import_is_atomic {
+    ensures result;
+}
+pact capacity_regression for full_board_rejects_addition {
+    ensures result;
+}
+pact final_id_regression for final_session_id {
+    ensures result;
+}
+pact clamped_shortfall_regression for clamped_shortfall {
+    ensures result;
+}
+pact clamped_overrun_regression for clamped_overrun {
+    ensures result;
+}

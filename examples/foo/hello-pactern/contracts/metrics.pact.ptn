@@ -1,0 +1,35 @@
+module metrics;
+pact summary_consistency for summarize {
+    requires board.count >= 0 && board.count <= 24;
+    ensures result.total == board.count;
+    ensures result.backlog + result.active + result.blocked + result.done == result.total;
+    ensures result.overdue >= 0 && result.overdue <= result.total;
+    ensures result.estimated >= 0 && result.estimated <= 1920;
+    ensures result.spent >= 0 && result.spent <= 8760;
+    ensures result.remaining >= 0 && result.remaining <= result.estimated;
+    ensures result.blocked_hours >= 0 && result.blocked_hours <= result.remaining;
+    ensures result.earned >= 0 && result.earned <= result.estimated;
+    ensures result.overrun >= 0 && result.overrun <= result.spent;
+}
+pact actionable_next for next {
+    requires board.count >= 0 && board.count <= 24;
+    ensures result >= -1 && result < board.count;
+    ensures result < 0 || (board.tasks[result].status != 2 && board.tasks[result].status != 3);
+}
+pact filter_definitions for matches {
+    ensures filter != 0 || result;
+    ensures filter != 1 || result == (task.status != 3);
+    ensures filter != 2 || result == (task.status == 2);
+    ensures filter != 3 || result == (task.status == 3);
+}
+pact project_hour_bounds for project_hours {
+    ensures result >= 0 && result <= 1920;
+}
+pact category_hour_bounds for tag_hours {
+    ensures result >= 0 && result <= 1920;
+}
+pact matching_task_count for matching_count {
+    requires board.count >= 0 && board.count <= 24;
+    ensures result >= 0 && result <= board.count;
+    ensures filter != 0 || result == board.count;
+}

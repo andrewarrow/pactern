@@ -1,0 +1,75 @@
+module board;
+import model;
+pact empty_session for empty {
+    ensures result.count == 0 && result.next_id == 1;
+    ensures result.day == 0 && result.people == 1 && result.daily_hours == 6;
+    ensures result.tasks[0].id == 0 && result.tasks[23].id == 0;
+}
+pact find_bounds for find {
+    requires board.count >= 0 && board.count <= 24;
+    ensures result >= -1 && result < board.count;
+    ensures result < 0 || board.tasks[result].id == id;
+}
+pact insertion_rules for add {
+    requires board.count >= 0 && board.count <= 24;
+    requires board.next_id >= 1 && board.next_id <= 366;
+    ensures result.count >= board.count && result.count <= 24;
+    ensures result.day == board.day && result.people == board.people && result.daily_hours == board.daily_hours;
+    ensures (board.count < 24 && board.next_id <= 365 && model::valid(task)) || (result.count == board.count && result.next_id == board.next_id);
+    ensures board.count >= 24 || board.next_id > 365 || !model::valid(task) || result.count == board.count + 1;
+    ensures board.count >= 24 || board.next_id > 365 || !model::valid(task) || result.next_id == board.next_id + 1;
+    ensures board.count >= 24 || board.next_id > 365 || !model::valid(task) || result.tasks[board.count].id == board.next_id;
+    ensures board.count >= 24 || board.next_id > 365 || !model::valid(task) || result.tasks[board.count].title == task.title;
+}
+pact update_preserves_session for update {
+    ensures result.count == board.count && result.next_id == board.next_id;
+    ensures result.day == board.day && result.people == board.people && result.daily_hours == board.daily_hours;
+}
+pact deletion_rules for delete {
+    requires board.count >= 0 && board.count <= 24;
+    ensures result.count >= 0 && result.count <= board.count;
+    ensures result.count == board.count || result.count == board.count - 1;
+    ensures result.next_id == board.next_id && result.day == board.day;
+    ensures result.people == board.people && result.daily_hours == board.daily_hours;
+    ensures find(board, id) >= 0 || result.count == board.count;
+    ensures find(board, id) < 0 || result.count == board.count - 1;
+}
+pact status_preserves_count for status {
+    ensures result.count == board.count && result.next_id == board.next_id;
+}
+pact logging_preserves_count for log {
+    ensures result.count == board.count && result.next_id == board.next_id;
+}
+pact priority_preserves_count for priority {
+    ensures result.count == board.count && result.next_id == board.next_id;
+}
+pact due_preserves_count for due {
+    ensures result.count == board.count && result.next_id == board.next_id;
+}
+pact settings_bounds for settings {
+    requires board.people >= 1 && board.people <= 20;
+    requires board.daily_hours >= 1 && board.daily_hours <= 12;
+    ensures result.people >= 1 && result.people <= 20;
+    ensures result.daily_hours >= 1 && result.daily_hours <= 12;
+    ensures result.count == board.count && result.day == board.day && result.next_id == board.next_id;
+    ensures people < 1 || people > 20 || hours < 1 || hours > 12 || (result.people == people && result.daily_hours == hours);
+}
+pact monotonic_planning_day for advance {
+    requires board.day >= 0 && board.day <= 365;
+    ensures result.day >= board.day && result.day <= 365;
+    ensures result.count == board.count && result.next_id == board.next_id;
+    ensures days < 1 || days > 365 - board.day || result.day == board.day + days;
+}
+pact atomic_template_import for apply {
+    requires board.count >= 0 && board.count <= 24;
+    requires blueprint.count >= 0 && blueprint.count <= 7;
+    requires board.next_id >= 1 && board.next_id <= 366;
+    ensures result.count >= board.count && result.count <= 24;
+    ensures result.count == board.count || result.count == board.count + blueprint.count;
+    ensures (blueprint.count <= 24 - board.count && blueprint.count <= 366 - board.next_id) || result.count == board.count;
+}
+pact demo_counts for demo {
+    ensures result.count == 5 && result.next_id == 6;
+    ensures result.tasks[1].spent == 2 && result.tasks[1].status == 1;
+    ensures result.tasks[2].status == 2;
+}

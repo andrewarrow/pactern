@@ -1,0 +1,467 @@
+module main;
+import host::terminal;
+import model;
+import board;
+import numbers;
+import render;
+import ui;
+import flow;
+import catalog;
+import usage;
+import checks;
+pub fn menu() -> String {
+    return "Pactern Planner: tasks, project templates, reports, and capacity planning.\n";
+}
+pub fn help_text() -> String {
+    return usage::text();
+}
+pub fn answer() -> String {
+    return "The answer is 42.\n";
+}
+pub fn selection(choice: String) -> I64 {
+    if (choice == "1" || choice == "tasks" || choice == "list") {
+        return 1;
+    }
+    if (choice == "2" || choice == "add") {
+        return 2;
+    }
+    if (choice == "3" || choice == "status") {
+        return 3;
+    }
+    if (choice == "4" || choice == "log") {
+        return 4;
+    }
+    if (choice == "5" || choice == "delete") {
+        return 5;
+    }
+    if (choice == "6" || choice == "templates") {
+        return 6;
+    }
+    if (choice == "7" || choice == "reports") {
+        return 7;
+    }
+    if (choice == "8" || choice == "forecast") {
+        return 8;
+    }
+    if (choice == "9" || choice == "settings") {
+        return 9;
+    }
+    if (choice == "10" || choice == "advance") {
+        return 10;
+    }
+    if (choice == "11" || choice == "reprioritize") {
+        return 11;
+    }
+    if (choice == "12" || choice == "due") {
+        return 12;
+    }
+    if (choice == "13" || choice == "clear") {
+        return 13;
+    }
+    if (choice == "14" || choice == "check" || choice == "selftest") {
+        return 14;
+    }
+    if (choice == "15" || choice == "help" || choice == "--help" || choice == "-h") {
+        return 15;
+    }
+    if (choice == "16" || choice == "demo") {
+        return 16;
+    }
+    if (choice == "answer") {
+        return 17;
+    }
+    if (choice == "summary") {
+        return 18;
+    }
+    if (choice == "capacity") {
+        return 19;
+    }
+    if (choice == "overdue") {
+        return 20;
+    }
+    if (choice == "blocked") {
+        return 21;
+    }
+    if (choice == "completed") {
+        return 22;
+    }
+    if (choice == "projects") {
+        return 23;
+    }
+    if (choice == "categories") {
+        return 24;
+    }
+    if (choice == "next") {
+        return 25;
+    }
+    if (choice == "priority") {
+        return 26;
+    }
+    if (choice == "week") {
+        return 27;
+    }
+    if (choice == "open") {
+        return 28;
+    }
+    if (choice == "0" || choice == "q" || choice == "quit" || choice == "exit") {
+        return 0;
+    }
+    return -1;
+}
+pub fn main(term: host::terminal::Terminal) -> I64 effects { env.read, terminal.read, terminal.write } {
+    let count = host::terminal::arg_count(borrow term);
+    let args = host::terminal::args(borrow term);
+    let mut session = board::demo();
+    let mut view = ui::menu(session);
+    let mut stage = 0;
+    let mut exit_code = 0;
+    let mut title = "";
+    let mut selected_id = 0;
+    let mut first = 0;
+    let mut second = 0;
+    let mut third = 0;
+    let mut fourth = 0;
+    if (count > 2 || (count == 2 && args[0] != "template")) {
+        host::terminal::write_error(borrow term, "Unknown command or extra arguments.\n");
+        host::terminal::write_error(borrow term, help_text());
+        return 2;
+    }
+    if (count == 2) {
+        let template_id = match (numbers::parse(args[1])) {
+            Option::Some(value) => value,
+            Option::None => -1
+        };
+        if (template_id < 1 || template_id > 22) {
+            host::terminal::write_error(borrow term, "Template number must be in 1..22.\n");
+            return 2;
+        }
+        view = match (catalog::get(template_id)) {
+            Option::Some(blueprint) => ui::preview(blueprint),
+            Option::None => render::notice("Unknown template.\n")
+        };
+        stage = -1;
+    } else if (count == 1) {
+        if (args[0] == "--empty") {
+            session = board::empty();
+            view = ui::menu(session);
+        } else {
+            let command = selection(args[0]);
+            if (command < 0) {
+                host::terminal::write_error(borrow term, "Unknown command.\n");
+                host::terminal::write_error(borrow term, help_text());
+                return 2;
+            }
+            if (command == 0) {
+                return 0;
+            }
+            if (command == 14) {
+                let failures = checks::run();
+                view = checks::view(failures);
+                if (failures > 0) {
+                    exit_code = 1;
+                }
+                stage = -1;
+            } else {
+                view = flow::view(session, command);
+                stage = flow::stage(command);
+                if (stage == 1 || command == 6) {
+                    stage = -1;
+                }
+            }
+        }
+    }
+    while (true) {
+        // One renderer owns the terminal. Pure views contain typed text/numbers.
+        let mut line_index = 0;
+        while (line_index < view.count) {
+            let line = view.lines[line_index];
+            let mut piece_index = 0;
+            while (piece_index < line.count) {
+                let piece = line.pieces[piece_index];
+                if (piece.numeric) {
+                    let mut magnitude = piece.value;
+                    if (magnitude < 0) {
+                        host::terminal::write(borrow term, "-");
+                        magnitude = -magnitude;
+                    }
+                    let mut divisor = 1000000;
+                    let mut started = false;
+                    while (divisor > 0) {
+                        let digit = magnitude / divisor % 10;
+                        if (digit != 0 || started || divisor == 1) {
+                            host::terminal::write(borrow term, numbers::digit(digit));
+                            started = true;
+                        }
+                        divisor = divisor / 10;
+                    }
+                } else {
+                    host::terminal::write(borrow term, piece.text);
+                }
+                piece_index = piece_index + 1;
+            }
+            line_index = line_index + 1;
+        }
+        if (stage < 0) {
+            return exit_code;
+        }
+        host::terminal::write(borrow term, view.prompt);
+        let input = host::terminal::read_line(borrow term);
+        let text = match (input) {
+            Option::Some(value) => value,
+            Option::None => "q"
+        };
+        if (text == "q" || text == "quit" || text == "exit") {
+            host::terminal::write(borrow term, "Session closed.\n");
+            return exit_code;
+        }
+        if (text == "back") {
+            stage = 0;
+            view = ui::menu(session);
+            continue;
+        }
+        if (stage == 0) {
+            let command = selection(text);
+            if (command == 0) {
+                host::terminal::write(borrow term, "Session closed.\n");
+                return exit_code;
+            }
+            if (command == 14) {
+                let failures = checks::run();
+                view = checks::view(failures);
+                if (failures > 0) {
+                    exit_code = 1;
+                }
+                stage = 1;
+            } else {
+                view = flow::view(session, command);
+                stage = flow::stage(command);
+            }
+            continue;
+        }
+        if (stage == 1) {
+            stage = 0;
+            view = ui::menu(session);
+            continue;
+        }
+        if (stage == 20) {
+            if (text == "") {
+                view = render::prompt("Title cannot be empty.\n", "Title (back cancels): ");
+            } else if (session.count == 24 || session.next_id > 365) {
+                view = render::notice("Board capacity or session ID limit reached. No task was added.\n");
+                stage = 1;
+            } else {
+                title = text;
+                stage = 21;
+                view = render::prompt("", "Estimated hours (1..80): ");
+            }
+            continue;
+        }
+        if (stage == 51) {
+            if (text == "yes") {
+                session = board::delete(session, selected_id);
+                view = render::notice("Task deleted.\n");
+                stage = 1;
+            } else {
+                view = render::prompt("No task deleted. Type yes or back.\n", "Confirm deletion: ");
+            }
+            continue;
+        }
+        if (stage == 61) {
+            if (text == "yes") {
+                let before = session.count;
+                session = match (catalog::get(selected_id)) {
+                    Option::Some(blueprint) => board::apply(session, blueprint),
+                    Option::None => session
+                };
+                if (session.count == before) {
+                    view = render::notice("Import does not fit the task or ID limit. Nothing was added.\n");
+                } else {
+                    view = render::notice("Project imported. Use Tasks to see assigned IDs.\n");
+                }
+                stage = 1;
+            } else {
+                view = render::prompt("Nothing imported. Type yes or back.\n", "Confirm import: ");
+            }
+            continue;
+        }
+        if (stage == 130 || stage == 160) {
+            if (stage == 130 && text == "clear") {
+                session = board::empty();
+                view = render::notice("Board cleared. Team settings and planning day reset.\n");
+                stage = 1;
+            } else if (stage == 160 && text == "demo") {
+                session = board::demo();
+                view = render::notice("Demo restored.\n");
+                stage = 1;
+            } else {
+                view = render::prompt("Nothing changed. Type the requested confirmation or back.\n", "Confirm: ");
+            }
+            continue;
+        }
+        let value = match (numbers::parse(text)) {
+            Option::Some(number) => number,
+            Option::None => -1
+        };
+        if (value < 0) {
+            view = render::prompt("Enter a whole number in the requested range; back cancels.\n", view.prompt);
+            continue;
+        }
+        if (stage == 21) {
+            if (value < 1 || value > 80) {
+                view = render::prompt("Estimate must be 1..80 hours.\n", view.prompt);
+            } else {
+                first = value;
+                stage = 22;
+                view = render::prompt("", "Priority (1 highest .. 5 lowest): ");
+            }
+        } else if (stage == 22) {
+            if (value < 1 || value > 5) {
+                view = render::prompt("Priority must be 1..5.\n", view.prompt);
+            } else {
+                second = value;
+                stage = 23;
+                view = render::prompt("", "Due on planning day (0..365): ");
+            }
+        } else if (stage == 23) {
+            session = board::add(session, model::task(title, first, second, value));
+            view = render::View {
+                lines: [render::value("Task created with ID #", session.next_id - 1, ".\n")],
+                count: 1,
+                prompt: "\nPress Enter for the menu (q exits): "
+            };
+            stage = 1;
+        } else if (stage == 30 || stage == 40 || stage == 50 || stage == 110 || stage == 120) {
+            let index = board::find(session, value);
+            if (index < 0) {
+                view = render::prompt("No task has that ID.\n", "Task ID (back cancels): ");
+            } else {
+                selected_id = value;
+                if (stage == 30) {
+                    stage = 31;
+                    view = render::prompt("0 backlog, 1 active, 2 blocked, 3 done\n", "New status: ");
+                } else if (stage == 40) {
+                    stage = 41;
+                    view = render::prompt("", "Hours to log (1..80): ");
+                } else if (stage == 50) {
+                    stage = 51;
+                    view = render::View {
+                        lines: [ui::task_line(session.tasks[index], true, 0, session.day)],
+                        count: 1,
+                        prompt: "Delete this task? Type yes (back cancels): "
+                    };
+                } else if (stage == 110) {
+                    stage = 111;
+                    view = render::prompt("", "Priority (1 highest .. 5 lowest): ");
+                } else {
+                    stage = 121;
+                    view = render::prompt("", "New due planning day (0..365): ");
+                }
+            }
+        } else if (stage == 31) {
+            if (value > 3) {
+                view = render::prompt("Status must be 0..3.\n", view.prompt);
+            } else {
+                session = board::status(session, selected_id, value);
+                view = render::notice("Status updated.\n");
+                stage = 1;
+            }
+        } else if (stage == 41) {
+            let index = board::find(session, selected_id);
+            let task = session.tasks[index];
+            if (value < 1 || value > 80) {
+                view = render::prompt("Log 1..80 hours at a time.\n", view.prompt);
+            } else if (task.status == 3) {
+                view = render::notice("Completed tasks cannot receive hours. Reopen the task first.\n");
+                stage = 1;
+            } else if (task.spent > 365 - value) {
+                view = render::prompt("Total logged hours cannot exceed 365.\n", view.prompt);
+            } else {
+                session = board::log(session, selected_id, value);
+                view = render::notice("Hours logged. Completion status is unchanged.\n");
+                stage = 1;
+            }
+        } else if (stage == 60) {
+            if (value < 1 || value > 22) {
+                view = render::prompt("Template number must be 1..22.\n", view.prompt);
+            } else {
+                selected_id = value;
+                view = match (catalog::get(value)) {
+                    Option::Some(blueprint) => ui::preview(blueprint),
+                    Option::None => ui::templates()
+                };
+                stage = 61;
+            }
+        } else if (stage == 70) {
+            if (value < 1 || value > 10) {
+                view = render::prompt("Report number must be 1..10.\n", view.prompt);
+            } else {
+                view = ui::report(session, value);
+                stage = 1;
+            }
+        } else if (stage == 80 || stage == 90) {
+            if (value < 1 || value > 20) {
+                view = render::prompt("Team size must be 1..20.\n", view.prompt);
+            } else {
+                first = value;
+                stage = stage + 1;
+                view = render::prompt("", "Focus hours per person per day (1..12): ");
+            }
+        } else if (stage == 81 || stage == 91) {
+            if (value < 1 || value > 12) {
+                view = render::prompt("Daily focus must be 1..12 hours.\n", view.prompt);
+            } else if (stage == 91) {
+                session = board::settings(session, first, value);
+                view = render::notice("Team settings updated.\n");
+                stage = 1;
+            } else {
+                second = value;
+                stage = 82;
+                view = render::prompt("", "Planning horizon in days (1..365): ");
+            }
+        } else if (stage == 82) {
+            if (value < 1) {
+                view = render::prompt("Horizon must be at least one day.\n", view.prompt);
+            } else {
+                third = value;
+                stage = 83;
+                view = render::prompt("", "Overhead percentage (0..100): ");
+            }
+        } else if (stage == 83) {
+            if (value > 100) {
+                view = render::prompt("Overhead must be 0..100 percent.\n", view.prompt);
+            } else {
+                fourth = value;
+                stage = 84;
+                view = render::prompt("", "Effort buffer percentage (0..100): ");
+            }
+        } else if (stage == 84) {
+            if (value > 100) {
+                view = render::prompt("Buffer must be 0..100 percent.\n", view.prompt);
+            } else {
+                view = ui::forecast(session, first, second, third, fourth, value);
+                stage = 1;
+            }
+        } else if (stage == 100) {
+            if (value < 1 || value > 365 - session.day) {
+                view = render::prompt("Day must advance by at least 1 and remain at most 365.\n", view.prompt);
+            } else {
+                session = board::advance(session, value);
+                view = render::notice("Planning day advanced. Due days remain unchanged.\n");
+                stage = 1;
+            }
+        } else if (stage == 111) {
+            if (value < 1 || value > 5) {
+                view = render::prompt("Priority must be 1..5.\n", view.prompt);
+            } else {
+                session = board::priority(session, selected_id, value);
+                view = render::notice("Priority updated.\n");
+                stage = 1;
+            }
+        } else if (stage == 121) {
+            session = board::due(session, selected_id, value);
+            view = render::notice("Due day updated.\n");
+            stage = 1;
+        }
+    }
+    return exit_code;
+}

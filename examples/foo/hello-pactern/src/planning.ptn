@@ -1,0 +1,99 @@
+module planning;
+// Bounded business arithmetic. Inputs are hours, people, days, or percentages.
+pub fn clamp(value: I64, low: I64, high: I64) -> I64 {
+    if (value < low) {
+        return low;
+    }
+    if (value > high) {
+        return high;
+    }
+    return value;
+}
+pub fn ceil_div(value: I64, divisor: I64) -> I64 {
+    if (value <= 0 || divisor <= 0) {
+        return 0;
+    }
+    return value / divisor + match (value % divisor) {
+        0 => 0,
+        _ => 1
+    };
+}
+pub fn capacity(people: I64, hours: I64, days: I64) -> I64 {
+    return clamp(people, 0, 20) * clamp(hours, 0, 12) * clamp(days, 0, 365);
+}
+pub fn usable(capacity: I64, overhead: I64) -> I64 {
+    return clamp(capacity, 0, 87600) * (100 - clamp(overhead, 0, 100)) / 100;
+}
+pub fn percentage(part: I64, whole: I64) -> I64 {
+    if (whole <= 0) {
+        return 0;
+    }
+    return clamp(part, 0, 87600) * 100 / clamp(whole, 1, 87600);
+}
+pub fn buffered(hours: I64, percent: I64) -> I64 {
+    let base = clamp(hours, 0, 87600);
+    return base + ceil_div(base * clamp(percent, 0, 100), 100);
+}
+pub fn shortfall(work: I64, available: I64) -> I64 {
+    let gap = clamp(work, 0, 175200) - clamp(available, 0, 87600);
+    if (gap <= 0) {
+        return 0;
+    }
+    return gap;
+}
+pub fn days_needed(work: I64, people: I64, hours: I64) -> I64 {
+    return ceil_div(clamp(work, 0, 175200), capacity(people, hours, 1));
+}
+pub fn people_needed(work: I64, days: I64, hours: I64) -> I64 {
+    return ceil_div(clamp(work, 0, 175200), capacity(1, hours, days));
+}
+pub fn days_with_overhead(work: I64, people: I64, hours: I64, overhead: I64) -> I64 {
+    let daily_hundredths = capacity(people, hours, 1) * (100 - clamp(overhead, 0, 100));
+    return ceil_div(clamp(work, 0, 175200) * 100, daily_hundredths);
+}
+pub fn risk(work: I64, available: I64) -> I64 {
+    if (work <= 0) {
+        return 0;
+    }
+    if (available <= 0 || work > available) {
+        return 3;
+    }
+    if (work * 100 > available * 85) {
+        return 2;
+    }
+    if (work * 100 > available * 65) {
+        return 1;
+    }
+    return 0;
+}
+pub fn risk_name(level: I64) -> String {
+    return match (level) {
+        0 => "comfortable",
+        1 => "watch capacity",
+        2 => "tight",
+        _ => "over capacity"
+    };
+}
+pub fn priority_score(priority: I64, due: I64, day: I64, blocked: Bool) -> I64 {
+    if (blocked) {
+        return -1;
+    }
+    let urgency = clamp(14 - (clamp(due, 0, 365) - clamp(day, 0, 365)), 0, 28);
+    return (6 - clamp(priority, 1, 5)) * 10 + urgency;
+}
+pub fn earned(estimate: I64, spent: I64, done: Bool) -> I64 {
+    if (done) {
+        return clamp(estimate, 0, 80);
+    }
+    return clamp(spent, 0, clamp(estimate, 0, 80));
+}
+pub fn overrun(estimate: I64, spent: I64) -> I64 {
+    let gap = clamp(spent, 0, 365) - clamp(estimate, 0, 80);
+    if (gap < 0) {
+        return 0;
+    }
+    return gap;
+}
+pub fn efficiency(earned: I64, spent: I64) -> I64 {
+    return percentage(earned, spent);
+}

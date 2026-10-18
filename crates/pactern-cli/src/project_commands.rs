@@ -613,13 +613,19 @@ pub fn run(
                     "terminal entry must return I64 (exit code 0..255) or Unit",
                 ));
             }
+            // Terminal sessions include repeated interaction and runtime pact
+            // checks; keep them bounded without using the short pure-call budget.
+            let terminal_limits = Limits {
+                fuel: 10_000_000,
+                ..Limits::default()
+            };
             let (c, wasm, guards) = if *no_contracts {
-                let c = backend::emit_c_terminal(&p, id, Limits::default(), false).map_err(tool)?;
+                let c = backend::emit_c_terminal(&p, id, terminal_limits, false).map_err(tool)?;
                 let wasm = backend::compile_wasm(&c).map_err(tool)?;
                 (c, wasm, vec![])
             } else {
                 let artifact =
-                    pacts::compile_terminal_guarded(&p, source.revision(), id, Limits::default())
+                    pacts::compile_terminal_guarded(&p, source.revision(), id, terminal_limits)
                         .map_err(tool)?;
                 (artifact.c_source, artifact.wasm, artifact.guards)
             };
@@ -643,7 +649,10 @@ pub fn run(
                 let stderr = std::io::stderr();
                 let execution = backend::run_wasm_terminal(
                     &wasm,
-                    HostLimits::default(),
+                    HostLimits {
+                        fuel: 10_000_000_000,
+                        ..HostLimits::default()
+                    },
                     backend::TerminalIo {
                         input: &mut stdin.lock(),
                         output: &mut stdout.lock(),

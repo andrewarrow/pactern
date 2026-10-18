@@ -1,0 +1,9 @@
+module flow;
+pact workflow_stage for stage {
+    ensures result >= 1 && result <= 160;
+    ensures command != 2 || result == 20;
+    ensures command != 6 || result == 60;
+    ensures command != 8 || result == 80;
+    ensures command != 13 || result == 130;
+    ensures command != 16 || result == 160;
+}

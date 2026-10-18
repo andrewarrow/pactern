@@ -1,0 +1,74 @@
+module planning;
+pact clamp_bounds for clamp {
+    requires low <= high;
+    ensures result >= low && result <= high;
+    ensures value >= low || result == low;
+    ensures value <= high || result == high;
+    ensures value < low || value > high || result == value;
+}
+pact ceiling_division for ceil_div {
+    ensures result >= 0;
+    ensures (value > 0 && divisor > 0) || result == 0;
+    ensures value <= 0 || divisor <= 0 || result >= value / divisor;
+    ensures value <= 0 || divisor <= 0 || result - value / divisor <= 1;
+    ensures value <= 0 || divisor <= 0 || value % divisor != 0 || result == value / divisor;
+}
+pact capacity_bounds for capacity {
+    ensures result >= 0 && result <= 87600;
+    ensures (people > 0 && hours > 0 && days > 0) || result == 0;
+    ensures people != 1 || hours != 6 || days != 5 || result == 30;
+}
+pact usable_capacity for usable {
+    ensures result >= 0 && result <= 87600;
+    ensures overhead < 100 || result == 0;
+    ensures capacity > 0 || result == 0;
+}
+pact safe_percentage for percentage {
+    ensures result >= 0 && result <= 8760000;
+    ensures whole > 0 || result == 0;
+    ensures part > 0 || result == 0;
+}
+pact effort_buffer for buffered {
+    ensures result >= 0 && result <= 175200;
+    ensures hours <= 0 || result >= clamp(hours, 0, 87600);
+    ensures percent > 0 || result == clamp(hours, 0, 87600);
+}
+pact capacity_gap for shortfall {
+    ensures result >= 0 && result <= 175200;
+    ensures clamp(work, 0, 175200) > clamp(available, 0, 87600) || result == 0;
+    ensures clamp(work, 0, 175200) <= clamp(available, 0, 87600) || result == clamp(work, 0, 175200) - clamp(available, 0, 87600);
+}
+pact forecast_days for days_needed {
+    ensures result >= 0 && result <= 175200;
+    ensures (work > 0 && people > 0 && hours > 0) || result == 0;
+}
+pact forecast_people for people_needed {
+    ensures result >= 0 && result <= 175200;
+    ensures (work > 0 && days > 0 && hours > 0) || result == 0;
+}
+pact risk_levels for risk {
+    requires work >= 0 && work <= 175200 && available >= 0 && available <= 87600;
+    ensures result >= 0 && result <= 3;
+    ensures work != 0 || result == 0;
+    ensures work <= 0 || work <= available || result == 3;
+    ensures work <= 0 || available != 0 || result == 3;
+}
+pact ranking_range for priority_score {
+    ensures result >= -1 && result <= 78;
+    ensures !blocked || result == -1;
+}
+pact earned_effort for earned {
+    ensures result >= 0 && result <= 80;
+    ensures !done || result == clamp(estimate, 0, 80);
+    ensures done || result <= clamp(estimate, 0, 80);
+}
+pact estimate_overrun for overrun {
+    ensures result >= 0 && result <= 365;
+    ensures clamp(spent, 0, 365) > clamp(estimate, 0, 80) || result == 0;
+    ensures clamp(spent, 0, 365) <= clamp(estimate, 0, 80) || result == clamp(spent, 0, 365) - clamp(estimate, 0, 80);
+}
+pact overhead_forecast for days_with_overhead {
+    ensures result >= 0 && result <= 17520000;
+    ensures (work > 0 && people > 0 && hours > 0 && overhead < 100) || result == 0;
+    ensures work != 20 || people != 1 || hours != 1 || overhead != 20 || result == 25;
+}

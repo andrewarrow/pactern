@@ -1,0 +1,21 @@
+module render;
+pact literal_piece for text {
+    ensures result.text == text && !result.numeric && result.value == 0;
+}
+pact numeric_piece for number {
+    ensures result.numeric && result.value == value;
+}
+pact literal_line for line {
+    ensures result.count == 1 && result.pieces[0].text == content;
+}
+pact numeric_line for value {
+    ensures result.count == 3;
+    ensures result.pieces[0].text == label && result.pieces[1].value == value && result.pieces[2].text == unit;
+}
+pact paired_line for pair {
+    ensures result.count == 5;
+    ensures result.pieces[1].value == first && result.pieces[3].value == second;
+}
+pact prompt_content for prompt {
+    ensures result.count == 1 && result.prompt == prompt;
+}

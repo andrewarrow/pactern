@@ -1,0 +1,151 @@
+module model;
+// Status: 0 backlog, 1 active, 2 blocked, 3 done.
+// Dates are integer planning days; no system clock or file access is required.
+pub struct Task {
+    id: I64,
+    title: String,
+    project: I64,
+    estimate: I64,
+    spent: I64,
+    priority: I64,
+    due: I64,
+    status: I64,
+    tag: I64,
+}
+pub struct Blueprint {
+    name: String,
+    description: String,
+    category: I64,
+    count: I64,
+    tasks: List<Task>,
+}
+pub struct Board {
+    tasks: List<Task>,
+    count: I64,
+    next_id: I64,
+    day: I64,
+    people: I64,
+    daily_hours: I64,
+}
+pub fn blank() -> Task {
+    return Task {
+        id: 0,
+        title: "",
+        project: 0,
+        estimate: 1,
+        spent: 0,
+        priority: 3,
+        due: 0,
+        status: 0,
+        tag: 0
+    };
+}
+pub fn task(title: String, estimate: I64, priority: I64, due: I64) -> Task {
+    return Task {
+        id: 0,
+        title: title,
+        project: 0,
+        estimate: estimate,
+        spent: 0,
+        priority: priority,
+        due: due,
+        status: 0,
+        tag: 0
+    };
+}
+pub fn valid(task: Task) -> Bool {
+    return task.id >= 0 && task.id <= 365 && task.title != "" && task.project >= 0 && task.project <= 22 && task.estimate >= 1 && task.estimate <= 80 && task.spent >= 0 && task.spent <= 365 && task.priority >= 1 && task.priority <= 5 && task.due >= 0 && task.due <= 365 && task.status >= 0 && task.status <= 3 && task.tag >= 0 && task.tag <= 4;
+}
+pub fn remaining(task: Task) -> I64 {
+    if (task.status == 3 || task.spent >= task.estimate) {
+        return 0;
+    }
+    return task.estimate - task.spent;
+}
+pub fn overdue(task: Task, day: I64) -> Bool {
+    return task.status != 3 && task.due < day;
+}
+pub fn with_id(task: Task, id: I64) -> Task {
+    return Task {
+        id: id,
+        title: task.title,
+        project: task.project,
+        estimate: task.estimate,
+        spent: task.spent,
+        priority: task.priority,
+        due: task.due,
+        status: task.status,
+        tag: task.tag
+    };
+}
+pub fn with_status(task: Task, status: I64) -> Task {
+    return Task {
+        id: task.id,
+        title: task.title,
+        project: task.project,
+        estimate: task.estimate,
+        spent: task.spent,
+        priority: task.priority,
+        due: task.due,
+        status: status,
+        tag: task.tag
+    };
+}
+pub fn with_spent(task: Task, spent: I64) -> Task {
+    return Task {
+        id: task.id,
+        title: task.title,
+        project: task.project,
+        estimate: task.estimate,
+        spent: spent,
+        priority: task.priority,
+        due: task.due,
+        status: task.status,
+        tag: task.tag
+    };
+}
+pub fn with_priority(task: Task, priority: I64) -> Task {
+    return Task {
+        id: task.id,
+        title: task.title,
+        project: task.project,
+        estimate: task.estimate,
+        spent: task.spent,
+        priority: priority,
+        due: task.due,
+        status: task.status,
+        tag: task.tag
+    };
+}
+pub fn with_due(task: Task, due: I64) -> Task {
+    return Task {
+        id: task.id,
+        title: task.title,
+        project: task.project,
+        estimate: task.estimate,
+        spent: task.spent,
+        priority: task.priority,
+        due: due,
+        status: task.status,
+        tag: task.tag
+    };
+}
+pub fn status_name(status: I64) -> String {
+    return match (status) {
+        0 => "backlog",
+        1 => "active",
+        2 => "blocked",
+        3 => "done",
+        _ => "unknown"
+    };
+}
+pub fn tag_name(tag: I64) -> String {
+    return match (tag) {
+        0 => "product",
+        1 => "engineering",
+        2 => "operations",
+        3 => "research",
+        4 => "personal",
+        _ => "unknown"
+    };
+}

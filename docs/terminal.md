@@ -74,8 +74,11 @@ The handle expires with the invocation, including traps and stream failures.
 
 CLI invocations allow at most 1,024 arguments and a cumulative 1 MiB of copied
 argument bytes, consumed stdin bytes, and written stdout/stderr bytes. Each input
-line allows at most 65,536 UTF-8 bytes, excluding LF/CRLF. Guest fuel, memory, call
-depth, and output decoding limits also apply. Input waits synchronously for a
+line allows at most 65,536 UTF-8 bytes, excluding LF/CRLF. CLI terminal builds and
+runs allow 10,000,000 Pactern evaluation steps; terminal runs additionally allow
+10,000,000,000 Wasm fuel units. These budgets include runtime pact checks and span
+the whole session. Pure entries retain their smaller default budgets. Memory,
+call depth, and output decoding limits also apply. Input waits synchronously for a
 line; guest instruction fuel does not impose a wall-clock deadline while waiting
 on the supplied input stream.
 

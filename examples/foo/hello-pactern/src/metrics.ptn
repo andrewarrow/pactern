@@ -1,0 +1,144 @@
+module metrics;
+import model;
+import planning;
+pub struct Summary {
+    total: I64,
+    backlog: I64,
+    active: I64,
+    blocked: I64,
+    done: I64,
+    overdue: I64,
+    estimated: I64,
+    spent: I64,
+    remaining: I64,
+    blocked_hours: I64,
+    earned: I64,
+    overrun: I64,
+}
+pub fn summarize(board: model::Board) -> Summary {
+    let mut index = 0;
+    let mut backlog = 0;
+    let mut active = 0;
+    let mut blocked = 0;
+    let mut done = 0;
+    let mut overdue = 0;
+    let mut estimated = 0;
+    let mut spent = 0;
+    let mut remaining = 0;
+    let mut blocked_hours = 0;
+    let mut earned = 0;
+    let mut overrun = 0;
+    while (index < board.count) {
+        let task = board.tasks[index];
+        if (task.status == 0) {
+            backlog = backlog + 1;
+        }
+        if (task.status == 1) {
+            active = active + 1;
+        }
+        if (task.status == 2) {
+            blocked = blocked + 1;
+            blocked_hours = blocked_hours + model::remaining(task);
+        }
+        if (task.status == 3) {
+            done = done + 1;
+        }
+        if (model::overdue(task, board.day)) {
+            overdue = overdue + 1;
+        }
+        estimated = estimated + task.estimate;
+        spent = spent + task.spent;
+        remaining = remaining + model::remaining(task);
+        earned = earned + planning::earned(task.estimate, task.spent, task.status == 3);
+        overrun = overrun + planning::overrun(task.estimate, task.spent);
+        index = index + 1;
+    }
+    return Summary {
+        total: board.count,
+        backlog: backlog,
+        active: active,
+        blocked: blocked,
+        done: done,
+        overdue: overdue,
+        estimated: estimated,
+        spent: spent,
+        remaining: remaining,
+        blocked_hours: blocked_hours,
+        earned: earned,
+        overrun: overrun
+    };
+}
+pub fn next(board: model::Board) -> I64 {
+    let mut index = 0;
+    let mut best = -1;
+    let mut best_score = -1;
+    while (index < board.count) {
+        let task = board.tasks[index];
+        if (task.status != 3 && task.status != 2) {
+            let score = planning::priority_score(task.priority, task.due, board.day, false);
+            if (score > best_score) {
+                best = index;
+                best_score = score;
+            }
+        }
+        index = index + 1;
+    }
+    return best;
+}
+pub fn matches(task: model::Task, filter: I64, day: I64) -> Bool {
+    if (filter == 0) {
+        return true;
+    }
+    if (filter == 1) {
+        return task.status != 3;
+    }
+    if (filter == 2) {
+        return task.status == 2;
+    }
+    if (filter == 3) {
+        return task.status == 3;
+    }
+    if (filter == 4) {
+        return model::overdue(task, day);
+    }
+    if (filter == 5) {
+        return task.priority == 1 && task.status != 3;
+    }
+    if (filter == 6) {
+        return task.status != 3 && task.due >= day && task.due <= day + 7;
+    }
+    return false;
+}
+pub fn project_hours(board: model::Board, project: I64) -> I64 {
+    let mut accumulated = 0;
+    let mut index = 0;
+    while (index < board.count) {
+        if (board.tasks[index].project == project) {
+            accumulated = accumulated + model::remaining(board.tasks[index]);
+        }
+        index = index + 1;
+    }
+    return accumulated;
+}
+pub fn matching_count(board: model::Board, filter: I64) -> I64 {
+    let mut count = 0;
+    let mut index = 0;
+    while (index < board.count) {
+        if (matches(board.tasks[index], filter, board.day)) {
+            count = count + 1;
+        }
+        index = index + 1;
+    }
+    return count;
+}
+pub fn tag_hours(board: model::Board, tag: I64) -> I64 {
+    let mut accumulated = 0;
+    let mut index = 0;
+    while (index < board.count) {
+        if (board.tasks[index].tag == tag) {
+            accumulated = accumulated + model::remaining(board.tasks[index]);
+        }
+        index = index + 1;
+    }
+    return accumulated;
+}

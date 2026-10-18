@@ -1,0 +1,14 @@
+module catalog;
+pact template_lookup for get {
+    ensures match (result) {
+        Option::Some(blueprint) => id >= 1 && id <= 22 && blueprint.count >= 6 && blueprint.count <= 7,
+        Option::None => id < 1 || id > 22
+    };
+}
+pact custom_project_name for name {
+    ensures (id >= 1 && id <= 22) || result == "Custom tasks";
+    ensures result != "";
+}
+pact readable_catalog for listing {
+    ensures result == "\nPROJECT TEMPLATES\nEach template adds 6 or 7 actionable tasks. Imports are all-or-nothing.\n\n   1  Product launch            7 tasks  54h  target day 21\n   2  Public API                7 tasks  78h  target day 20\n   3  Website refresh           7 tasks  62h  target day 21\n   4  Mobile beta               7 tasks  62h  target day 21\n   5  Data pipeline             6 tasks  56h  target day 16\n   6  Design system             6 tasks  62h  target day 20\n   7  Search quality            6 tasks  52h  target day 18\n   8  Authentication upgrade    6 tasks  58h  target day 18\n   9  Payments integration      6 tasks  60h  target day 18\n  10  Customer discovery        6 tasks  48h  target day 18\n  11  Performance sprint        6 tasks  48h  target day 16\n  12  Incident readiness        7 tasks  42h  target day 15\n  13  Security review           7 tasks  66h  target day 21\n  14  Team onboarding           7 tasks  30h  target day 12\n  15  Release train             7 tasks  44h  target day 12\n  16  Database migration        6 tasks  52h  target day 21\n  17  Documentation overhaul    6 tasks  40h  target day 15\n  18  Hiring loop               6 tasks  46h  target day 20\n  19  Conference workshop       6 tasks  46h  target day 18\n  20  Learning plan             6 tasks  42h  target day 21\n  21  Community event           6 tasks  38h  target day 18\n  22  Quarterly planning        6 tasks  36h  target day 14\n";
+}

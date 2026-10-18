@@ -1,0 +1,71 @@
+module catalog;
+import model;
+import templates::product;
+import templates::operations;
+pub fn get(id: I64) -> Option<model::Blueprint> {
+    if (id >= 1 && id <= 11) {
+        return Option::Some(templates::product::get(id));
+    }
+    if (id >= 12 && id <= 22) {
+        return Option::Some(templates::operations::get(id - 11));
+    }
+    return Option::None;
+}
+pub fn name(id: I64) -> String {
+    return match (id) {
+        1 => "Product launch",
+        2 => "Public API",
+        3 => "Website refresh",
+        4 => "Mobile beta",
+        5 => "Data pipeline",
+        6 => "Design system",
+        7 => "Search quality",
+        8 => "Authentication upgrade",
+        9 => "Payments integration",
+        10 => "Customer discovery",
+        11 => "Performance sprint",
+        12 => "Incident readiness",
+        13 => "Security review",
+        14 => "Team onboarding",
+        15 => "Release train",
+        16 => "Database migration",
+        17 => "Documentation overhaul",
+        18 => "Hiring loop",
+        19 => "Conference workshop",
+        20 => "Learning plan",
+        21 => "Community event",
+        22 => "Quarterly planning",
+        _ => "Custom tasks",
+    };
+}
+pub fn size(id: I64) -> I64 {
+    if (id >= 1 && id <= 11) {
+        return templates::product::size(id);
+    }
+    if (id >= 12 && id <= 22) {
+        return templates::operations::size(id - 11);
+    }
+    return 0;
+}
+pub fn effort(id: I64) -> I64 {
+    if (id >= 1 && id <= 11) {
+        return templates::product::effort(id);
+    }
+    if (id >= 12 && id <= 22) {
+        return templates::operations::effort(id - 11);
+    }
+    return 0;
+}
+pub fn deadline(id: I64) -> I64 {
+    if (id >= 1 && id <= 11) {
+        return templates::product::deadline(id);
+    }
+    if (id >= 12 && id <= 22) {
+        return templates::operations::deadline(id - 11);
+    }
+    return 0;
+}
+// Immutable catalog data is rendered once to keep terminal allocations small.
+pub fn listing() -> String {
+    return "\nPROJECT TEMPLATES\nEach template adds 6 or 7 actionable tasks. Imports are all-or-nothing.\n\n   1  Product launch            7 tasks  54h  target day 21\n   2  Public API                7 tasks  78h  target day 20\n   3  Website refresh           7 tasks  62h  target day 21\n   4  Mobile beta               7 tasks  62h  target day 21\n   5  Data pipeline             6 tasks  56h  target day 16\n   6  Design system             6 tasks  62h  target day 20\n   7  Search quality            6 tasks  52h  target day 18\n   8  Authentication upgrade    6 tasks  58h  target day 18\n   9  Payments integration      6 tasks  60h  target day 18\n  10  Customer discovery        6 tasks  48h  target day 18\n  11  Performance sprint        6 tasks  48h  target day 16\n  12  Incident readiness        7 tasks  42h  target day 15\n  13  Security review           7 tasks  66h  target day 21\n  14  Team onboarding           7 tasks  30h  target day 12\n  15  Release train             7 tasks  44h  target day 12\n  16  Database migration        6 tasks  52h  target day 21\n  17  Documentation overhaul    6 tasks  40h  target day 15\n  18  Hiring loop               6 tasks  46h  target day 20\n  19  Conference workshop       6 tasks  46h  target day 18\n  20  Learning plan             6 tasks  42h  target day 21\n  21  Community event           6 tasks  38h  target day 18\n  22  Quarterly planning        6 tasks  36h  target day 14\n";
+}

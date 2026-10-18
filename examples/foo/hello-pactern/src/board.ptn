@@ -1,0 +1,224 @@
+module board;
+import model;
+// Fixed capacity keeps every allocation bounded without requiring list mutation.
+pub fn empty() -> model::Board {
+    return model::Board {
+        tasks: [model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank()],
+        count: 0,
+        next_id: 1,
+        day: 0,
+        people: 1,
+        daily_hours: 6,
+    };
+}
+fn slot(original: model::Task, position: I64, index: I64, replacement: model::Task) -> model::Task {
+    if (position == index) {
+        return replacement;
+    }
+    return original;
+}
+fn replace(tasks: List<model::Task>, index: I64, replacement: model::Task) -> List<model::Task> {
+    return [slot(tasks[0], 0, index, replacement), slot(tasks[1], 1, index, replacement), slot(tasks[2], 2, index, replacement), slot(tasks[3], 3, index, replacement), slot(tasks[4], 4, index, replacement), slot(tasks[5], 5, index, replacement), slot(tasks[6], 6, index, replacement), slot(tasks[7], 7, index, replacement), slot(tasks[8], 8, index, replacement), slot(tasks[9], 9, index, replacement), slot(tasks[10], 10, index, replacement), slot(tasks[11], 11, index, replacement), slot(tasks[12], 12, index, replacement), slot(tasks[13], 13, index, replacement), slot(tasks[14], 14, index, replacement), slot(tasks[15], 15, index, replacement), slot(tasks[16], 16, index, replacement), slot(tasks[17], 17, index, replacement), slot(tasks[18], 18, index, replacement), slot(tasks[19], 19, index, replacement), slot(tasks[20], 20, index, replacement), slot(tasks[21], 21, index, replacement), slot(tasks[22], 22, index, replacement), slot(tasks[23], 23, index, replacement)];
+}
+fn shifted(tasks: List<model::Task>, position: I64, index: I64) -> model::Task {
+    if (position < index) {
+        return tasks[position];
+    }
+    if (position == 23) {
+        return model::blank();
+    }
+    return tasks[position + 1];
+}
+fn removed(tasks: List<model::Task>, index: I64) -> List<model::Task> {
+    return [shifted(tasks, 0, index), shifted(tasks, 1, index), shifted(tasks, 2, index), shifted(tasks, 3, index), shifted(tasks, 4, index), shifted(tasks, 5, index), shifted(tasks, 6, index), shifted(tasks, 7, index), shifted(tasks, 8, index), shifted(tasks, 9, index), shifted(tasks, 10, index), shifted(tasks, 11, index), shifted(tasks, 12, index), shifted(tasks, 13, index), shifted(tasks, 14, index), shifted(tasks, 15, index), shifted(tasks, 16, index), shifted(tasks, 17, index), shifted(tasks, 18, index), shifted(tasks, 19, index), shifted(tasks, 20, index), shifted(tasks, 21, index), shifted(tasks, 22, index), shifted(tasks, 23, index)];
+}
+pub fn find(board: model::Board, id: I64) -> I64 {
+    let mut index = 0;
+    while (index < board.count) {
+        if (board.tasks[index].id == id) {
+            return index;
+        }
+        index = index + 1;
+    }
+    return -1;
+}
+pub fn add(board: model::Board, task: model::Task) -> model::Board {
+    if (board.count >= 24 || board.next_id > 365 || !model::valid(task)) {
+        return board;
+    }
+    let assigned = model::with_id(task, board.next_id);
+    return model::Board {
+        tasks: replace(board.tasks, board.count, assigned),
+        count: board.count + 1,
+        next_id: board.next_id + 1,
+        day: board.day,
+        people: board.people,
+        daily_hours: board.daily_hours
+    };
+}
+pub fn update(board: model::Board, task: model::Task) -> model::Board {
+    let index = find(board, task.id);
+    if (index < 0 || !model::valid(task)) {
+        return board;
+    }
+    return model::Board {
+        tasks: replace(board.tasks, index, task),
+        count: board.count,
+        next_id: board.next_id,
+        day: board.day,
+        people: board.people,
+        daily_hours: board.daily_hours
+    };
+}
+pub fn delete(board: model::Board, id: I64) -> model::Board {
+    let index = find(board, id);
+    if (index < 0) {
+        return board;
+    }
+    return model::Board {
+        tasks: removed(board.tasks, index),
+        count: board.count - 1,
+        next_id: board.next_id,
+        day: board.day,
+        people: board.people,
+        daily_hours: board.daily_hours
+    };
+}
+pub fn status(board: model::Board, id: I64, status: I64) -> model::Board {
+    let index = find(board, id);
+    if (index < 0 || status < 0 || status > 3) {
+        return board;
+    }
+    return update(board, model::with_status(board.tasks[index], status));
+}
+pub fn log(board: model::Board, id: I64, hours: I64) -> model::Board {
+    let index = find(board, id);
+    if (index < 0 || hours < 1 || hours > 80) {
+        return board;
+    }
+    let task = board.tasks[index];
+    if (task.spent > 365 - hours || task.status == 3) {
+        return board;
+    }
+    return update(board, model::with_spent(task, task.spent + hours));
+}
+pub fn priority(board: model::Board, id: I64, priority: I64) -> model::Board {
+    let index = find(board, id);
+    if (index < 0 || priority < 1 || priority > 5) {
+        return board;
+    }
+    return update(board, model::with_priority(board.tasks[index], priority));
+}
+pub fn due(board: model::Board, id: I64, day: I64) -> model::Board {
+    let index = find(board, id);
+    if (index < 0 || day < 0 || day > 365) {
+        return board;
+    }
+    return update(board, model::with_due(board.tasks[index], day));
+}
+pub fn settings(board: model::Board, people: I64, hours: I64) -> model::Board {
+    if (people < 1 || people > 20 || hours < 1 || hours > 12) {
+        return board;
+    }
+    return model::Board {
+        tasks: board.tasks,
+        count: board.count,
+        next_id: board.next_id,
+        day: board.day,
+        people: people,
+        daily_hours: hours
+    };
+}
+pub fn advance(board: model::Board, days: I64) -> model::Board {
+    if (days < 1 || days > 365 - board.day) {
+        return board;
+    }
+    return model::Board {
+        tasks: board.tasks,
+        count: board.count,
+        next_id: board.next_id,
+        day: board.day + days,
+        people: board.people,
+        daily_hours: board.daily_hours
+    };
+}
+pub fn apply(board: model::Board, blueprint: model::Blueprint) -> model::Board {
+    // Reject the whole import when it cannot fit; never import a partial project.
+    if (blueprint.count > 24 - board.count || blueprint.count > 366 - board.next_id) {
+        return board;
+    }
+    let mut validation_index = 0;
+    while (validation_index < blueprint.count) {
+        if (!model::valid(blueprint.tasks[validation_index])) {
+            return board;
+        }
+        validation_index = validation_index + 1;
+    }
+    let mut accumulated = board;
+    let mut index = 0;
+    while (index < blueprint.count) {
+        accumulated = add(accumulated, blueprint.tasks[index]);
+        index = index + 1;
+    }
+    return accumulated;
+}
+pub fn demo() -> model::Board {
+    return model::Board {
+        tasks: [model::Task {
+            id: 1,
+            title: "Write the release brief",
+            project: 0,
+            estimate: 4,
+            spent: 0,
+            priority: 1,
+            due: 2,
+            status: 0,
+            tag: 0
+        }, model::Task {
+            id: 2,
+            title: "Build the command router",
+            project: 0,
+            estimate: 8,
+            spent: 2,
+            priority: 2,
+            due: 4,
+            status: 1,
+            tag: 0
+        }, model::Task {
+            id: 3,
+            title: "Review accessibility",
+            project: 0,
+            estimate: 3,
+            spent: 0,
+            priority: 2,
+            due: 5,
+            status: 2,
+            tag: 0
+        }, model::Task {
+            id: 4,
+            title: "Run acceptance checks",
+            project: 0,
+            estimate: 5,
+            spent: 0,
+            priority: 1,
+            due: 6,
+            status: 0,
+            tag: 0
+        }, model::Task {
+            id: 5,
+            title: "Publish the runbook",
+            project: 0,
+            estimate: 2,
+            spent: 0,
+            priority: 3,
+            due: 7,
+            status: 0,
+            tag: 0
+        }, model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(), model::blank(),],
+        count: 5,
+        next_id: 6,
+        day: 0,
+        people: 1,
+        daily_hours: 6,
+    };
+}

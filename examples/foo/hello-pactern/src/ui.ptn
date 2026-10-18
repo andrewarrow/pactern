@@ -1,0 +1,162 @@
+module ui;
+import model;
+import metrics;
+import planning;
+import catalog;
+import render;
+pub fn menu(board: model::Board) -> render::View {
+    return render::View {
+        lines: [render::line("\nPACTERN PLANNER\n"), render::pair("Planning day ", board.day, "  |  Tasks ", board.count, "/24\n"), render::line("Session only: changes reset when the program exits.\n\n"), render::line("  1  Tasks              2  Add task           3  Change status\n"), render::line("  4  Log hours          5  Delete task        6  Project templates\n"), render::line("  7  Reports            8  Capacity forecast  9  Team settings\n"), render::line(" 10  Advance day       11  Set priority      12  Set due day\n"), render::line(" 13  Clear board       14  Self-checks       15  Help\n"), render::line(" 16  Restore demo       0  Exit\n"),],
+        count: 9,
+        prompt: "\nChoose an option: ",
+    };
+}
+pub fn task_line(task: model::Task, visible: Bool, filter: I64, day: I64) -> render::Line {
+    if (!visible || !metrics::matches(task, filter, day)) {
+        return render::Line {
+            pieces: [],
+            count: 0
+        };
+    }
+    return render::Line {
+        pieces: [render::text("  #"), render::number(task.id), render::text("  "), render::text(task.title), render::text("  ["), render::text(model::status_name(task.status)), render::text("]  P"), render::number(task.priority), render::text("  remaining "), render::number(model::remaining(task)), render::text("h  due day "), render::number(task.due), render::text("\n")],
+        count: 13,
+    };
+}
+pub fn tasks(board: model::Board, filter: I64) -> render::View {
+    if (metrics::matching_count(board, filter) == 0) {
+        return render::notice("\nNo tasks match this view.\n");
+    }
+    return render::View {
+        lines: [render::line("\nTASKS  (#ID, title, status, priority, remaining hours, due day)\n"), task_line(board.tasks[0], 0 < board.count, filter, board.day), task_line(board.tasks[1], 1 < board.count, filter, board.day), task_line(board.tasks[2], 2 < board.count, filter, board.day), task_line(board.tasks[3], 3 < board.count, filter, board.day), task_line(board.tasks[4], 4 < board.count, filter, board.day), task_line(board.tasks[5], 5 < board.count, filter, board.day), task_line(board.tasks[6], 6 < board.count, filter, board.day), task_line(board.tasks[7], 7 < board.count, filter, board.day), task_line(board.tasks[8], 8 < board.count, filter, board.day), task_line(board.tasks[9], 9 < board.count, filter, board.day), task_line(board.tasks[10], 10 < board.count, filter, board.day), task_line(board.tasks[11], 11 < board.count, filter, board.day), task_line(board.tasks[12], 12 < board.count, filter, board.day), task_line(board.tasks[13], 13 < board.count, filter, board.day), task_line(board.tasks[14], 14 < board.count, filter, board.day), task_line(board.tasks[15], 15 < board.count, filter, board.day), task_line(board.tasks[16], 16 < board.count, filter, board.day), task_line(board.tasks[17], 17 < board.count, filter, board.day), task_line(board.tasks[18], 18 < board.count, filter, board.day), task_line(board.tasks[19], 19 < board.count, filter, board.day), task_line(board.tasks[20], 20 < board.count, filter, board.day), task_line(board.tasks[21], 21 < board.count, filter, board.day), task_line(board.tasks[22], 22 < board.count, filter, board.day), task_line(board.tasks[23], 23 < board.count, filter, board.day), render::line("\nP1 is the highest priority.\n"),],
+        count: 26,
+        prompt: "\nPress Enter for the menu (q exits): ",
+    };
+}
+pub fn summary(board: model::Board) -> render::View {
+    let data = metrics::summarize(board);
+    return render::View {
+        lines: [render::line("\nPROJECT OVERVIEW\n"), render::pair("Tasks: ", data.total, "  Completed: ", data.done, "\n"), render::pair("Backlog: ", data.backlog, "  Active: ", data.active, "\n"), render::pair("Blocked: ", data.blocked, "  Overdue: ", data.overdue, "\n"), render::value("Estimated effort: ", data.estimated, " hours\n"), render::value("Logged effort: ", data.spent, " hours\n"), render::value("Remaining effort: ", data.remaining, " hours\n"), render::value("Blocked effort: ", data.blocked_hours, " hours\n"), render::value("Completion: ", planning::percentage(data.done, data.total), "% of tasks\n"), render::value("Effort over estimate: ", data.overrun, " hours\n"),],
+        count: 10,
+        prompt: "\nPress Enter for the menu (q exits): ",
+    };
+}
+pub fn forecast(board: model::Board, people: I64, hours: I64, days: I64, overhead: I64, buffer: I64) -> render::View {
+    let data = metrics::summarize(board);
+    let raw = planning::capacity(people, hours, days);
+    let available = planning::usable(raw, overhead);
+    let work = planning::buffered(data.remaining, buffer);
+    let needed = planning::days_with_overhead(work, people, hours, overhead);
+    return render::View {
+        lines: [render::line("\nCAPACITY FORECAST\n"), render::pair("Team: ", people, " people  |  Daily focus: ", hours, " hours/person\n"), render::pair("Horizon: ", days, " days  |  Raw capacity: ", raw, " hours\n"), render::pair("Overhead: ", overhead, "%  |  Buffer: ", buffer, "%\n"), render::value("Usable capacity: ", available, " hours\n"), render::value("Remaining work with buffer: ", work, " hours\n"), render::value("Capacity shortfall: ", planning::shortfall(work, available), " hours\n"), render::value("Required planning days: ", needed, " days\n"), render::value("Utilization: ", planning::percentage(work, available), "%\n"), render::line(planning::risk_name(planning::risk(work, available))), render::line("\nBlocked work remains in the forecast. Dependencies may extend delivery.\n"), render::line("With zero daily capacity, the day estimate is unavailable (shown as 0).\n"),],
+        count: 12,
+        prompt: "\nPress Enter for the menu (q exits): ",
+    };
+}
+pub fn templates() -> render::View {
+    return render::prompt(catalog::listing(), "\nTemplate number to preview (back cancels): ");
+}
+pub fn preview(blueprint: model::Blueprint) -> render::View {
+    return render::View {
+        lines: [render::line("\n"), render::line(blueprint.name), render::line("\n"), render::line(blueprint.description), render::line("\n"), render::value("Tasks to import: ", blueprint.count, "\n"), preview_task(blueprint.tasks[0]), preview_task(blueprint.tasks[1]), preview_task(blueprint.tasks[2]), preview_task(blueprint.tasks[3]), preview_task(blueprint.tasks[4]), preview_task(blueprint.tasks[5]), optional_seventh(blueprint), render::line("Due days are absolute planning days from the start of the session.\n"),],
+        count: 14,
+        prompt: "\nImport this project? Type yes (back cancels): ",
+    };
+}
+pub fn preview_task(task: model::Task) -> render::Line {
+    return render::Line {
+        pieces: [render::text("  - "), render::text(task.title), render::text("  "), render::number(task.estimate), render::text("h  P"), render::number(task.priority), render::text("  due day "), render::number(task.due), render::text("\n")],
+        count: 9,
+    };
+}
+fn optional_seventh(blueprint: model::Blueprint) -> render::Line {
+    if (blueprint.count == 7) {
+        return preview_task(blueprint.tasks[6]);
+    }
+    return render::Line {
+        pieces: [],
+        count: 0
+    };
+}
+pub fn reports() -> render::View {
+    return render::prompt("\nREPORTS\n  1 Overview       2 Weekly capacity    3 Overdue\n  4 Blocked        5 Projects           6 Categories\n  7 Next action    8 Completed          9 High priority\n 10 Due this week\n", "\nReport number (back cancels): ");
+}
+pub fn project_line(board: model::Board, id: I64) -> render::Line {
+    if (metrics::project_hours(board, id) == 0) {
+        return render::Line {
+            pieces: [],
+            count: 0
+        };
+    }
+    return render::Line {
+        pieces: [render::text(catalog::name(id)), render::text(": "), render::number(metrics::project_hours(board, id)), render::text(" hours remaining\n")],
+        count: 4
+    };
+}
+pub fn projects(board: model::Board) -> render::View {
+    if (metrics::summarize(board).remaining == 0) {
+        return render::notice("\nNo projects have remaining work.\n");
+    }
+    return render::View {
+        lines: [render::line("\nREMAINING EFFORT BY PROJECT\n"), project_line(board, 0), project_line(board, 1), project_line(board, 2), project_line(board, 3), project_line(board, 4), project_line(board, 5), project_line(board, 6), project_line(board, 7), project_line(board, 8), project_line(board, 9), project_line(board, 10), project_line(board, 11), project_line(board, 12), project_line(board, 13), project_line(board, 14), project_line(board, 15), project_line(board, 16), project_line(board, 17), project_line(board, 18), project_line(board, 19), project_line(board, 20), project_line(board, 21), project_line(board, 22),],
+        count: 24,
+        prompt: "\nPress Enter for the menu (q exits): ",
+    };
+}
+pub fn category_line(board: model::Board, id: I64) -> render::Line {
+    return render::Line {
+        pieces: [render::text(model::tag_name(id)), render::text(": "), render::number(metrics::tag_hours(board, id)), render::text(" hours remaining\n")],
+        count: 4
+    };
+}
+pub fn categories(board: model::Board) -> render::View {
+    return render::View {
+        lines: [render::line("\nREMAINING EFFORT BY CATEGORY\n"), category_line(board, 0), category_line(board, 1), category_line(board, 2), category_line(board, 3), category_line(board, 4)],
+        count: 6,
+        prompt: "\nPress Enter for the menu (q exits): "
+    };
+}
+pub fn next(board: model::Board) -> render::View {
+    let index = metrics::next(board);
+    if (index < 0) {
+        return render::notice("\nNo actionable tasks. Add work or unblock an existing task.\n");
+    }
+    return render::View {
+        lines: [render::line("\nSUGGESTED NEXT ACTION\nPriority and due day determine rank; blocked and completed tasks are excluded.\n"), task_line(board.tasks[index], true, 0, board.day)],
+        count: 2,
+        prompt: "\nPress Enter for the menu (q exits): "
+    };
+}
+pub fn report(board: model::Board, choice: I64) -> render::View {
+    if (choice == 1) {
+        return summary(board);
+    }
+    if (choice == 2) {
+        return forecast(board, board.people, board.daily_hours, 5, 20, 15);
+    }
+    if (choice == 3) {
+        return tasks(board, 4);
+    }
+    if (choice == 4) {
+        return tasks(board, 2);
+    }
+    if (choice == 5) {
+        return projects(board);
+    }
+    if (choice == 6) {
+        return categories(board);
+    }
+    if (choice == 7) {
+        return next(board);
+    }
+    if (choice == 8) {
+        return tasks(board, 3);
+    }
+    if (choice == 9) {
+        return tasks(board, 5);
+    }
+    if (choice == 10) {
+        return tasks(board, 6);
+    }
+    return render::notice("Unknown report. Choose a report from 1 to 10.\n");
+}
