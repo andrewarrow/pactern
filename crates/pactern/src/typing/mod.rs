@@ -3,7 +3,7 @@
 //! [`check`] resolves names first and checks types only if resolution succeeds.
 //! Results retain file-aware origins and result-local symbol IDs. This is a
 //! library compiler phase, not a protocol envelope or executable/typed core IR.
-//! User-defined generics and borrowed handles are explicitly unsupported here;
+//! Rank-1 generics use rigid body parameters and fresh call-site inference;
 //! effects, handle lifetimes, execution, and verification belong to later phases.
 //!
 //! ```
@@ -35,7 +35,8 @@ use coverage::{Constructor, Pattern as CoverPattern};
 pub const MAX_TYPE_DEPTH: usize = 64;
 pub const MAX_TYPE_NODES: usize = 1024;
 
-/// A fully inferred ordinary value type. Named types are nominal declaration IDs.
+/// An inferred ordinary value type, possibly containing rigid generic parameters.
+/// Named and applied types use nominal, resolution-local declaration IDs.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ValueType {
     Bool,
@@ -46,6 +47,10 @@ pub enum ValueType {
     Option(Box<ValueType>),
     Result(Box<ValueType>, Box<ValueType>),
     Named(SymbolId),
+    /// A generic record or enum with its ordered type arguments.
+    Applied(SymbolId, Vec<ValueType>),
+    /// A rigid parameter inside a generic declaration, never an inference variable.
+    Parameter(SymbolId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -122,6 +127,8 @@ enum Ty {
     Option(Box<Ty>),
     Result(Box<Ty>, Box<Ty>),
     Named(SymbolId),
+    Applied(SymbolId, Vec<Ty>),
+    Parameter(SymbolId),
     Var(usize),
     Error,
 }
@@ -146,12 +153,15 @@ struct Checker<'a> {
     signatures: BTreeMap<SymbolId, Signature>,
     fields: BTreeMap<SymbolId, BTreeMap<String, (SymbolId, Ty)>>,
     variants: BTreeMap<SymbolId, Vec<(SymbolId, Vec<Ty>)>>,
-    generic: BTreeSet<SymbolId>,
+    generic: BTreeMap<SymbolId, Vec<SymbolId>>,
     types: BTreeMap<SymbolId, Ty>,
     mutable: BTreeSet<SymbolId>,
     variables: Vec<Option<Ty>>,
     expressions: Vec<(Location, Ty)>,
     matches: Vec<PendingMatch>,
+    instantiations: Vec<(Location, Ty)>,
+    current_function: Option<SymbolId>,
+    calls: BTreeMap<SymbolId, BTreeSet<SymbolId>>,
 }
 
 fn key(file: FileId, span: Span) -> (usize, usize, usize) {
@@ -183,12 +193,15 @@ impl<'a> Checker<'a> {
             signatures: BTreeMap::new(),
             fields: BTreeMap::new(),
             variants: BTreeMap::new(),
-            generic: BTreeSet::new(),
+            generic: BTreeMap::new(),
             types: BTreeMap::new(),
             mutable: BTreeSet::new(),
             variables: vec![],
             expressions: vec![],
             matches: vec![],
+            instantiations: vec![],
+            current_function: None,
+            calls: BTreeMap::new(),
         }
     }
 
@@ -234,14 +247,11 @@ impl<'a> Checker<'a> {
                 };
                 if !parameters.is_empty() {
                     let id = self.declaration(FileId(i), name);
-                    self.generic.insert(id);
-                    self.error(
-                        FileId(i),
-                        name.span,
-                        "PTN_TYPE_UNSUPPORTED_GENERIC",
-                        "user-defined generics are not implemented",
-                        Some(id),
-                    );
+                    let ids = parameters
+                        .iter()
+                        .map(|p| self.declaration(FileId(i), p))
+                        .collect();
+                    self.generic.insert(id, ids);
                 }
             }
         }
@@ -252,9 +262,7 @@ impl<'a> Checker<'a> {
                 match &d.kind {
                     DeclarationKind::Function(f) => {
                         let id = self.declaration(file_id, &f.name);
-                        if self.generic.contains(&id) {
-                            continue;
-                        }
+                        self.current_function = Some(id);
                         let result = self.signatures[&id].result.clone();
                         if self.block(file_id, &f.body, &result, 0)
                             && result != Ty::Unit
@@ -270,6 +278,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                     DeclarationKind::Pact(p) => {
+                        self.current_function = None;
                         let target = self.reference(file_id, p.target.span);
                         let result = self.signatures[&target].result.clone();
                         let results: Vec<_> = self
@@ -292,6 +301,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        self.check_generic_recursion();
         for (id, ty) in &self.types {
             if let Some(ty) = self.value_type(ty) {
                 self.out.symbol_types.insert(*id, ty);
@@ -359,7 +369,7 @@ impl<'a> Checker<'a> {
                                 variant,
                                 Signature {
                                     parameters: payload.clone(),
-                                    result: Ty::Named(id),
+                                    result: self.named_template(id),
                                 },
                             );
                             variants.push((variant, payload));
@@ -383,18 +393,13 @@ impl<'a> Checker<'a> {
                 _ => 0,
             }
         } else {
-            0
+            self.generic.get(&id).map_or(0, Vec::len)
         };
         let arguments: Vec<_> = ty
             .arguments
             .iter()
             .map(|a| self.annotation(file, a))
             .collect();
-        if self.generic.contains(&id)
-            || symbol_kind(&self.out.resolution, id) == SymbolKind::TypeParameter
-        {
-            return Ty::Error;
-        }
         if arguments.len() != arity {
             self.error(
                 file,
@@ -422,6 +427,10 @@ impl<'a> Checker<'a> {
                 Box::new(arguments[0].clone()),
                 Box::new(arguments[1].clone()),
             ),
+            _ if symbol_kind(&self.out.resolution, id) == SymbolKind::TypeParameter => {
+                Ty::Parameter(id)
+            }
+            _ if !arguments.is_empty() => Ty::Applied(id, arguments),
             _ => Ty::Named(id),
         };
         if !self.bounded(&ty) {
@@ -435,6 +444,88 @@ impl<'a> Checker<'a> {
             Ty::Error
         } else {
             ty
+        }
+    }
+
+    fn named_template(&self, id: SymbolId) -> Ty {
+        match self.generic.get(&id) {
+            Some(parameters) => {
+                Ty::Applied(id, parameters.iter().copied().map(Ty::Parameter).collect())
+            }
+            None => Ty::Named(id),
+        }
+    }
+
+    fn substitute(ty: &Ty, substitutions: &BTreeMap<SymbolId, Ty>) -> Ty {
+        match ty {
+            Ty::Parameter(id) => substitutions.get(id).cloned().unwrap_or_else(|| ty.clone()),
+            Ty::List(t) => Ty::List(Box::new(Self::substitute(t, substitutions))),
+            Ty::Option(t) => Ty::Option(Box::new(Self::substitute(t, substitutions))),
+            Ty::Result(t, e) => Ty::Result(
+                Box::new(Self::substitute(t, substitutions)),
+                Box::new(Self::substitute(e, substitutions)),
+            ),
+            Ty::Applied(id, ts) => Ty::Applied(
+                *id,
+                ts.iter()
+                    .map(|t| Self::substitute(t, substitutions))
+                    .collect(),
+            ),
+            _ => ty.clone(),
+        }
+    }
+
+    fn substitute_signature(sig: &Signature, substitutions: &BTreeMap<SymbolId, Ty>) -> Signature {
+        Signature {
+            parameters: sig
+                .parameters
+                .iter()
+                .map(|t| Self::substitute(t, substitutions))
+                .collect(),
+            result: Self::substitute(&sig.result, substitutions),
+        }
+    }
+
+    fn fresh_substitutions(&mut self, id: SymbolId) -> BTreeMap<SymbolId, Ty> {
+        self.generic
+            .get(&id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| (p, self.fresh()))
+            .collect()
+    }
+
+    fn type_substitutions(&self, ty: &Ty) -> BTreeMap<SymbolId, Ty> {
+        match self.prune(ty) {
+            Ty::Applied(id, ts) => self.generic[&id].iter().copied().zip(ts).collect(),
+            _ => BTreeMap::new(),
+        }
+    }
+
+    fn check_generic_recursion(&mut self) {
+        for id in self.generic.keys().copied().collect::<Vec<_>>() {
+            if symbol_kind(&self.out.resolution, id) != SymbolKind::Function {
+                continue;
+            }
+            let mut pending: Vec<_> = self.calls.get(&id).into_iter().flatten().copied().collect();
+            let mut seen = BTreeSet::new();
+            while let Some(next) = pending.pop() {
+                if next == id {
+                    let location = self.out.resolution.symbols[id.0].declaration.unwrap();
+                    self.error(
+                        location.file,
+                        location.span,
+                        "PTN_TYPE_GENERIC_RECURSION",
+                        "recursive call cycles involving generic functions are unsupported",
+                        Some(id),
+                    );
+                    break;
+                }
+                if seen.insert(next) {
+                    pending.extend(self.calls.get(&next).into_iter().flatten().copied());
+                }
+            }
         }
     }
 
@@ -456,6 +547,7 @@ impl<'a> Checker<'a> {
     fn occurs(&self, id: usize, ty: &Ty) -> bool {
         match self.prune(ty) {
             Ty::Var(i) => i == id,
+            Ty::Applied(_, ts) => ts.iter().any(|t| self.occurs(id, t)),
             Ty::List(t) | Ty::Option(t) => self.occurs(id, &t),
             Ty::Result(t, e) => self.occurs(id, &t) || self.occurs(id, &e),
             _ => false,
@@ -480,6 +572,10 @@ impl<'a> Checker<'a> {
                 self.variables[*i] = Some(t.clone());
                 true
             }
+            (Ty::Applied(a, xs), Ty::Applied(b, ys)) if a == b && xs.len() == ys.len() => xs
+                .iter()
+                .zip(ys)
+                .fold(true, |ok, (x, y)| self.unify(x, y) && ok),
             (Ty::List(a), Ty::List(b)) | (Ty::Option(a), Ty::Option(b)) => self.unify(a, b),
             (Ty::Result(a, e), Ty::Result(b, f)) => {
                 let left = self.unify(a, b);
@@ -515,6 +611,17 @@ impl<'a> Checker<'a> {
             return "type exceeding the complexity limit".into();
         }
         match self.prune(ty) {
+            Ty::Parameter(id) => {
+                format!("type parameter {}", self.out.resolution.symbols[id.0].name)
+            }
+            Ty::Applied(id, ts) => format!(
+                "{}<{}>",
+                self.out.resolution.symbols[id.0].name,
+                ts.iter()
+                    .map(|t| self.describe(t))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             Ty::Bool => "Bool".into(),
             Ty::I64 => "I64".into(),
             Ty::String => "String".into(),
@@ -535,6 +642,13 @@ impl<'a> Checker<'a> {
             return None;
         }
         Some(match self.prune(ty) {
+            Ty::Parameter(id) => ValueType::Parameter(id),
+            Ty::Applied(id, ts) => ValueType::Applied(
+                id,
+                ts.iter()
+                    .map(|t| self.value_type(t))
+                    .collect::<Option<_>>()?,
+            ),
             Ty::Bool => ValueType::Bool,
             Ty::I64 => ValueType::I64,
             Ty::String => ValueType::String,
@@ -552,6 +666,7 @@ impl<'a> Checker<'a> {
     fn ambiguous(&self, ty: &Ty) -> bool {
         match self.prune(ty) {
             Ty::Var(_) => true,
+            Ty::Applied(_, ts) => ts.iter().any(|t| self.ambiguous(t)),
             Ty::List(t) | Ty::Option(t) => self.ambiguous(&t),
             Ty::Result(t, e) => self.ambiguous(&t) || self.ambiguous(&e),
             _ => false,
@@ -572,6 +687,7 @@ impl<'a> Checker<'a> {
                 }
             }
             match ty {
+                Ty::Applied(_, ts) => pending.extend(ts.iter().map(|t| (t, depth + 1))),
                 Ty::List(t) | Ty::Option(t) => pending.push((t, depth + 1)),
                 Ty::Result(t, e) => {
                     pending.push((t, depth + 1));
@@ -588,9 +704,13 @@ impl<'a> Checker<'a> {
     fn check_expr(&mut self, file: FileId, expr: &Expr, expected: Option<Ty>) -> Ty {
         let start = self.expressions.len();
         let ty = self.expr(file, expr, expected);
-        let ambiguous = self.expressions[start..].iter().find_map(|(location, ty)| {
-            (self.bounded(ty) && self.ambiguous(ty)).then_some(location.span)
-        });
+        let instantiations = std::mem::take(&mut self.instantiations);
+        let ambiguous = self.expressions[start..]
+            .iter()
+            .chain(&instantiations)
+            .find_map(|(location, ty)| {
+                (self.bounded(ty) && self.ambiguous(ty)).then_some(location.span)
+            });
         if let Some(span) = ambiguous {
             self.error(
                 file,
@@ -820,7 +940,7 @@ impl<'a> Checker<'a> {
             ExprKind::Result => self.types[&self.reference(file, expr.span)].clone(),
             ExprKind::Call { callee, arguments } => {
                 if let ExprKind::Path(path) = &callee.kind {
-                    self.call(file, path, arguments, expected.clone(), true)
+                    self.call(file, path, arguments, expected.clone(), None)
                 } else {
                     self.error(
                         file,
@@ -841,21 +961,25 @@ impl<'a> Checker<'a> {
                 type_arguments,
                 arguments,
             } => {
-                self.error(
-                    file,
-                    expr.span,
-                    "PTN_TYPE_UNSUPPORTED_GENERIC",
-                    "explicit generic calls are not implemented",
-                    None,
-                );
-                for t in type_arguments {
-                    self.annotation(file, t);
-                }
-                self.call(file, path, arguments, expected.clone(), false)
+                let types = type_arguments
+                    .iter()
+                    .map(|t| self.annotation(file, t))
+                    .collect();
+                self.call(file, path, arguments, expected.clone(), Some(types))
             }
             ExprKind::Record { path, fields } => {
                 let id = self.reference(file, path.span);
-                let declared = self.fields[&id].clone();
+                let substitutions = self.fresh_substitutions(id);
+                let record = Self::substitute(&self.named_template(id), &substitutions);
+                if let Some(ref expected) = expected {
+                    self.expect(file, path.span, &record, expected, Some(id));
+                }
+                let declared: BTreeMap<_, _> = self.fields[&id]
+                    .iter()
+                    .map(|(name, (field, ty))| {
+                        (name.clone(), (*field, Self::substitute(ty, &substitutions)))
+                    })
+                    .collect();
                 let mut seen = BTreeSet::new();
                 for field in fields {
                     let name = &field.name.value;
@@ -892,22 +1016,19 @@ impl<'a> Checker<'a> {
                         );
                     }
                 }
-                if self.generic.contains(&id) {
-                    Ty::Error
-                } else {
-                    Ty::Named(id)
-                }
+                record
             }
             ExprKind::Field { base, name } => {
                 let base = self.expr(file, base, None);
                 match self.prune(&base) {
-                    Ty::Named(id) => {
+                    Ty::Named(id) | Ty::Applied(id, _) => {
                         if let Some((_, ty)) = self
                             .fields
                             .get(&id)
                             .and_then(|fields| fields.get(&name.value))
                         {
-                            ty.clone()
+                            let substitutions = self.type_substitutions(&base);
+                            Self::substitute(ty, &substitutions)
                         } else {
                             self.error(
                                 file,
@@ -1004,7 +1125,9 @@ impl<'a> Checker<'a> {
     fn constructor(&mut self, id: SymbolId) -> Signature {
         let symbol = &self.out.resolution.symbols[id.0];
         if symbol.kind == SymbolKind::Variant {
-            return self.signatures[&id].clone();
+            let parent = symbol.parent.unwrap();
+            let substitutions = self.fresh_substitutions(parent);
+            return Self::substitute_signature(&self.signatures[&id], &substitutions);
         }
         let parent = symbol.parent.unwrap();
         let name = symbol.name.clone();
@@ -1042,16 +1165,76 @@ impl<'a> Checker<'a> {
         path: &Path,
         arguments: &[Argument],
         expected: Option<Ty>,
-        ordinary: bool,
+        explicit: Option<Vec<Ty>>,
     ) -> Ty {
         let id = self.reference(file, path.span);
         let sig = if symbol_kind(&self.out.resolution, id) == SymbolKind::Function {
-            self.signatures[&id].clone()
+            if let Some(caller) = self.current_function {
+                self.calls.entry(caller).or_default().insert(id);
+            }
+            let parameters = self.generic.get(&id).cloned().unwrap_or_default();
+            let substitutions = if let Some(types) = explicit {
+                if types.len() != parameters.len() {
+                    self.error(
+                        file,
+                        path.span,
+                        "PTN_TYPE_ARITY",
+                        format!(
+                            "expected {} type arguments, got {}",
+                            parameters.len(),
+                            types.len()
+                        ),
+                        Some(id),
+                    );
+                }
+                parameters
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, p)| (p, types.get(i).cloned().unwrap_or(Ty::Error)))
+                    .collect()
+            } else {
+                self.fresh_substitutions(id)
+            };
+            // Retain unused type arguments so ambiguity cannot disappear from a Unit result.
+            for ty in substitutions.values() {
+                self.instantiations.push((
+                    Location {
+                        file,
+                        span: path.span,
+                    },
+                    ty.clone(),
+                ));
+            }
+            Self::substitute_signature(&self.signatures[&id], &substitutions)
         } else {
-            self.constructor(id)
+            let sig = self.constructor(id);
+            if let Some(types) = explicit {
+                let inferred = match &sig.result {
+                    Ty::Applied(_, ts) => ts.clone(),
+                    Ty::Option(t) => vec![*t.clone()],
+                    Ty::Result(t, e) => vec![*t.clone(), *e.clone()],
+                    _ => vec![],
+                };
+                if types.len() != inferred.len() {
+                    self.error(
+                        file,
+                        path.span,
+                        "PTN_TYPE_ARITY",
+                        format!(
+                            "expected {} type arguments, got {}",
+                            inferred.len(),
+                            types.len()
+                        ),
+                        Some(id),
+                    );
+                }
+                for (actual, expected) in inferred.iter().zip(&types) {
+                    self.expect(file, path.span, actual, expected, Some(id));
+                }
+            }
+            sig
         };
-        if ordinary
-            && sig.parameters.is_empty()
+        if sig.parameters.is_empty()
             && symbol_kind(&self.out.resolution, id) != SymbolKind::Function
         {
             self.error(

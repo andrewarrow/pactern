@@ -116,9 +116,17 @@ impl Checker<'_> {
                 vec![("None", vec![]), ("Some", vec![*t])],
             )),
             Ty::Result(t, e) => Some(builtin("Result", vec![("Ok", vec![*t]), ("Err", vec![*e])])),
-            Ty::Named(id) => self.variants.get(&id).map(|vs| {
+            Ty::Named(id) | Ty::Applied(id, _) => self.variants.get(&id).map(|vs| {
                 vs.iter()
-                    .map(|(id, payload)| (Constructor::Variant(*id), payload.clone()))
+                    .map(|(id, payload)| {
+                        (
+                            Constructor::Variant(*id),
+                            payload
+                                .iter()
+                                .map(|t| Self::substitute(t, &self.type_substitutions(ty)))
+                                .collect(),
+                        )
+                    })
                     .collect()
             }),
             _ => None,
@@ -138,6 +146,9 @@ impl Checker<'_> {
             return Err(());
         }
         *steps -= cost;
+        if types.iter().any(|ty| !self.bounded(ty)) {
+            return Err(());
+        }
         if row.is_empty() {
             return Ok(matrix.is_empty());
         }

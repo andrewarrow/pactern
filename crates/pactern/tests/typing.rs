@@ -400,7 +400,7 @@ fn patterns_check_types_arity_infinite_domains_and_decoded_strings() {
 }
 
 #[test]
-fn type_arity_and_current_generic_and_handle_boundaries_are_explicit() {
+fn type_arity_and_handle_boundaries_are_explicit() {
     for ty in [
         "List",
         "Option<I64, Bool>",
@@ -413,14 +413,7 @@ fn type_arity_and_current_generic_and_handle_boundaries_are_explicit() {
             "PTN_TYPE_ARITY",
         );
     }
-    for source in [
-        "fn identity<T>(x: T) -> T { return x; }",
-        "struct Box<T> { value: T }",
-        "enum Choice<T> { Value(T) }",
-        "fn f() -> I64 { return f::<I64>(); }",
-    ] {
-        rejects(source, "PTN_TYPE_UNSUPPORTED_GENERIC");
-    }
+    rejects("fn f() -> I64 { return f::<I64>(); }", "PTN_TYPE_ARITY");
     rejects(
         "fn f(x: borrow I64) -> Unit {}",
         "PTN_TYPE_UNSUPPORTED_HANDLE",
@@ -674,4 +667,157 @@ fn types_and_pattern_analysis_have_explicit_resource_limits() {
         &format!("fn f(x: I64) -> I64 {{ return match (x) {{ {arms} _ => 0 }}; }}"),
         "PTN_TYPE_MATCH_LIMIT",
     );
+}
+
+#[test]
+fn generic_functions_infer_independently_and_check_bodies_parametrically() {
+    accepts(
+        r#"
+        fn identity<T>(x: T) -> T { return x; }
+        fn wrap<T>(x: T) -> List<T> { return [identity(x)]; }
+        fn empty<T>() -> List<T> { return []; }
+        fn run() -> Bool {
+            let n = identity(1);
+            let b = identity::<Bool>(true);
+            let xs: List<String> = empty();
+            let nested = wrap(Option::Some(n));
+            return b;
+        }
+    "#,
+    );
+    for source in [
+        "fn bad<T>(x: T) -> T { return x + 1; }",
+        "fn bad<T>(x: T) -> I64 { return x; }",
+        "fn bad<T, U>(x: T) -> U { return x; }",
+        "fn id<T>(x: T) -> T { return x; } fn f() -> Bool { return id::<I64>(true); }",
+    ] {
+        rejects(source, "PTN_TYPE_MISMATCH");
+    }
+    rejects(
+        "fn bad<T>(x: T) -> Bool { return x == x; }",
+        "PTN_TYPE_INVALID_EQUALITY",
+    );
+    rejects(
+        "fn empty<T>() -> List<T> { return []; } fn f() -> Unit { let x = empty(); }",
+        "PTN_TYPE_CANNOT_INFER",
+    );
+    rejects(
+        "fn unused<T>() -> Unit {} fn f() -> Unit { unused(); }",
+        "PTN_TYPE_CANNOT_INFER",
+    );
+    rejects(
+        "fn id<T>(x: T) -> T { return x; } fn f() -> I64 { return id::<I64, Bool>(1); }",
+        "PTN_TYPE_ARITY",
+    );
+}
+
+#[test]
+fn generic_records_enums_fields_and_nested_coverage_substitute_parameters() {
+    accepts(
+        r#"
+        struct Box<T> { value: T }
+        enum Choice<T> { Empty, Value(T) }
+        fn unbox<T>(x: Box<T>) -> T { return x.value; }
+        fn choose<T>(x: T) -> Choice<Box<T>> { return Choice::Value(Box { value: x }); }
+        fn run() -> Bool {
+            let b = Box { value: true };
+            let n = Box { value: 1 };
+            let empty: Choice<String> = Choice::Empty;
+            let xs: Box<List<I64>> = Box { value: [] };
+            let choice = choose(unbox(b));
+            return match (choice) { Choice::Empty => false, Choice::Value(v) => v.value };
+        }
+        fn coverage(x: Choice<Bool>) -> I64 {
+            return match (x) { Choice::Empty => 0, Choice::Value(true) => 1, Choice::Value(false) => 2 };
+        }
+    "#,
+    );
+    rejects(
+        "struct Box<T> { value: T } fn f(x: Box<Bool>) -> Box<I64> { return x; }",
+        "PTN_TYPE_MISMATCH",
+    );
+    rejects(
+        "enum E<T> { A(T), B } fn f(x: E<Bool>) -> I64 { return match (x) { E::A(true) => 1, E::B => 0 }; }",
+        "PTN_TYPE_NONEXHAUSTIVE_MATCH",
+    );
+    rejects(
+        "enum E<T> { A(T), B } fn f() -> Unit { let x = E::B; }",
+        "PTN_TYPE_CANNOT_INFER",
+    );
+    rejects(
+        "struct Empty<T> {} fn f() -> Unit { let x = Empty {}; }",
+        "PTN_TYPE_CANNOT_INFER",
+    );
+    rejects(
+        "struct Box<T> { value: T } fn f(x: Box) -> Unit {}",
+        "PTN_TYPE_ARITY",
+    );
+    rejects("fn f<T>(x: T<I64>) -> Unit {}", "PTN_TYPE_ARITY");
+}
+
+#[test]
+fn generic_recursion_is_rejected_even_through_nongeneric_helpers() {
+    for source in [
+        "fn f<T>(x: T) -> T { return f(x); }",
+        "fn f<T>(x: T) -> Unit { g(x); } fn g<U>(x: U) -> Unit { f(x); }",
+        "fn f<T>(x: T) -> Unit { g(); } fn g() -> Unit { f(1); }",
+        "fn f<T>(x: T) -> Unit { f([x]); }",
+    ] {
+        rejects(source, "PTN_TYPE_GENERIC_RECURSION");
+    }
+}
+
+#[test]
+fn explicit_constructor_arguments_and_public_generic_imports() {
+    accepts("enum E<T> { V(T) } fn f() -> E<I64> { return E::V::<I64>(1); }");
+    accepts("fn f() -> Result<I64, String> { return Result::Ok::<I64, String>(1); }");
+    rejects(
+        "enum E<T> { V(T) } fn f() -> E<Bool> { return E::V::<I64>(true); }",
+        "PTN_TYPE_MISMATCH",
+    );
+    rejects(
+        "fn f() -> Option<I64> { return Option::Some::<I64, Bool>(1); }",
+        "PTN_TYPE_ARITY",
+    );
+    let result = check(&[
+        file(
+            "src/data.ptn",
+            "module data; pub struct Box<T> { value: T } pub fn box<T>(x: T) -> Box<T> { return Box { value: x }; }",
+        ),
+        file(
+            "src/main.ptn",
+            "module main; import data; fn f() -> Bool { let b: data::Box<Bool> = data::box::<Bool>(true); return b.value; }",
+        ),
+    ]);
+    assert!(
+        result.is_success(),
+        "{:?} {:?}",
+        result.resolution.diagnostics,
+        result.diagnostics
+    );
+    assert!(
+        result
+            .symbol_types
+            .values()
+            .any(|t| matches!(t, ValueType::Applied(_, ts) if ts == &[ValueType::Bool]))
+    );
+    assert!(
+        result
+            .symbol_types
+            .values()
+            .any(|t| matches!(t, ValueType::Parameter(_)))
+    );
+}
+
+#[test]
+fn recursive_generic_data_and_type_growth_remain_bounded() {
+    accepts(
+        "enum Tree<T> { Leaf(T), Branch(Tree<T>) } fn f<T>(x: Tree<T>) -> Bool { return match (x) { Tree::Leaf(_) => true, Tree::Branch(_) => false }; }",
+    );
+    let mut source = "struct Box<T> { value: T } fn f() -> Unit { let v0 = 1;".to_owned();
+    for n in 1..100 {
+        source.push_str(&format!("let v{n} = Box {{ value: v{} }};", n - 1));
+    }
+    source.push('}');
+    rejects(&source, "PTN_TYPE_LIMIT");
 }

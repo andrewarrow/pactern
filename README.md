@@ -18,8 +18,8 @@ respects the agreement—and return useful evidence when it doesn't.
 
 **Early development:** the specification, Rust library with a lexer, parser, and
 module/name resolver and core type checker, installable CLI skeleton, conformance
-fixtures, and Go/Rust baseline harness are available. User-defined generics,
-Pactern compilation, verification, execution, and semantic edits remain to be
+fixtures, and Go/Rust baseline harness are available. Rank-1 generic functions
+and data types are supported. Pactern compilation, verification, execution, and semantic edits remain to be
 implemented. The examples and workflow below describe the design.
 
 ## Why write the rules twice?
@@ -223,12 +223,12 @@ Help, version metadata, structured tool diagnostics, and the library syntax,
 resolution, and core typing APIs work today. The resolver accepts parsed project
 files with package-relative module paths and returns file-aware declarations, references,
 and diagnostics. The type checker validates core values, local inference, calls,
-mutation, returns, and nested exhaustive matches. CLI commands such as `check`,
+mutation, returns, rank-1 generics, and nested exhaustive matches. CLI commands such as `check`,
 `verify`, `test`, `build`, and `apply` still return explicit not-implemented errors; they do not process or
 modify a Pactern project.
 
 If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): simple generic functions and types.
+[implementation milestone](MILESTONES.md): a typed core IR.
 The [conformance corpus](fixtures/conformance/README.md) and
 [Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
 reproducible measurements. Concrete edge cases, small failing programs, and challenges to

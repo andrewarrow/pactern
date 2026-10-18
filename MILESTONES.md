@@ -74,6 +74,17 @@ later work. See the [development guide](docs/development.md) for the API and lim
 
 ### 7. Add simple generic functions and types
 
+**Status:** Complete for value typing. The checker supports rank-1 functions,
+records, and enums with rigid generic body parameters, independent call-site
+inference, explicit type arguments, and substituted field/pattern types. Generic
+call cycles are rejected, including cycles through nongeneric helpers; ambiguous
+inference and invalid arities receive located diagnostics. Public type results
+retain nominal arguments and generic parameter IDs. The typing suite covers
+imported generics, nested coverage, recursive data, invalid body operations, and
+resource limits. Workspace tests, build, formatting, and Clippy pass. See the
+[development guide](docs/development.md#generic-value-typing) for examples and
+boundaries. Monomorphization, typed core IR, handles, and execution remain later work.
+
 **Languages/formats:** Rust; Pactern source. **Done when:** the documented generic cases type-check and unsupported inference or specialization cases receive explicit diagnostics rather than silently changing types.
 
 ### 8. Define a typed core IR

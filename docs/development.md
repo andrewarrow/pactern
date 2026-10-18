@@ -130,10 +130,8 @@ would trap at runtime remain valid types.
 Expanded types are limited to depth 64 and 1,024 nodes. Each match has a budget of
 20,000 analysis units (charging row scans and recursive steps), with recursion
 limited to 256. Exceeding these bounds emits `PTN_TYPE_LIMIT` or
-`PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. User-defined
-generics and explicit generic calls emit `PTN_TYPE_UNSUPPORTED_GENERIC`; borrowed
-parameters/arguments emit `PTN_TYPE_UNSUPPORTED_HANDLE`. Prelude `List`, `Option`,
-and `Result` work without user-defined generic support. Type checking performs no
+`PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. Borrowed
+parameters/arguments emit `PTN_TYPE_UNSUPPORTED_HANDLE`. Type checking performs no
 filesystem or network access and does not execute code. It does not establish
 effect bounds, handle safety, contract proofs, or runtime behavior. CLI project
 loading and protocol diagnostic envelopes remain later work.
@@ -162,3 +160,31 @@ cargo run -p pactern-baseline --locked -- --samples 5 --output target/baseline.j
 See [baseline measurement details](../baselines/README.md) for the task format,
 initial results, measured costs, and limitations. Timing is observational and is
 not a pass/fail threshold in workspace tests.
+
+### Generic value typing
+
+Rank-1 functions, records, and enums are supported. Each generic body is checked
+once with rigid parameters: `fn identity<T>(x: T) -> T { return x; }` works, while
+adding integers to `T`, comparing arbitrary `T` values, or returning `T` as another
+parameter is rejected even if the function is never called. Each call gets fresh
+inference variables; arguments and expected results determine its type arguments.
+Explicit calls such as `identity::<I64>(1)` and `Result::Ok::<I64, String>(1)`
+check exact type-argument arity. There is no partial explicit specialization.
+
+Record fields and enum payloads infer arguments, including through nested types:
+`Box { value: true }` has type `Box<Bool>` for `struct Box<T> { value: T }`.
+`let empty: Box<List<I64>> = Box { value: [] };` uses result context. Field access
+and match coverage substitute the actual arguments. Nullary variants still omit
+parentheses and use annotations for context. Unconstrained arguments, including
+unused function parameters such as `fn f<T>() -> Unit {}`, produce
+`PTN_TYPE_CANNOT_INFER`; type-argument count errors produce `PTN_TYPE_ARITY`.
+Annotations resolve ambiguous locals before later statements, as in core typing.
+
+`ValueType::Applied` exposes a nominal declaration ID and ordered arguments;
+`ValueType::Parameter` identifies a rigid parameter in generic declaration bodies.
+All IDs belong to the enclosing resolution result. No monomorphized executable
+or specialization IR is produced. Recursive call cycles involving a generic
+function (including through nongeneric helpers and changing instantiations) emit
+`PTN_TYPE_GENERIC_RECURSION`. Recursive nominal data remains supported within
+bounded type and coverage analysis. Handles remain unavailable and cannot be
+passed or instantiated as ordinary generic values.
