@@ -7,7 +7,7 @@ this toolchain automatically.
 The workspace contains three crates:
 
 - `crates/pactern` is the shared Rust library for versioned tool and protocol
-  types, syntax APIs, and module/name resolution.
+  types, syntax APIs, module/name resolution, and core value typing.
 - `crates/pactern-cli` is the `pactern` binary. It adapts command-line
   arguments and terminal output to the shared library.
 - `crates/pactern-baseline` validates recorded conformance fixtures and runs
@@ -42,7 +42,7 @@ The CLI's version and help output work. Its project commands remain scaffolded
 and return a not-implemented diagnostic. The library parses implementation and
 contract source files and resolves parsed files together as a project. Resolution
 uses package-relative module paths and returns symbol/reference indexes and
-located diagnostics; it does not check types.
+located diagnostics. The core type checker builds on this resolution result.
 
 Use the syntax API directly when testing grammar behavior:
 
@@ -86,8 +86,57 @@ package-relative path (for example, `src/util/math.ptn` or
 access. Its file, module, and symbol IDs belong to one result and are not
 persistent identities. Diagnostics and references include a file ID because
 syntax spans are local to one source file. Field accesses and effect labels are
-recorded for later phases; resolution does not check types, effects, generic
+recorded for later phases; resolution itself does not check types, effects, generic
 recursion, handles, or host registries.
+
+Check core types after parsing the closed project:
+
+```rust
+use pactern::resolution::ParsedFile;
+use pactern::syntax::{parse, FileKind, SourceFile};
+use pactern::typing::{check, ValueType};
+
+fn main() -> Result<(), pactern::syntax::SyntaxDiagnostic> {
+    let path = "src/example.ptn";
+    let source = SourceFile::new(path,
+        "module example; fn answer() -> I64 { let n = 42; return n; }");
+    let tree = parse(&source, FileKind::Implementation)?;
+    let checked = check(&[ParsedFile::new(path, tree)]);
+    assert!(checked.is_success());
+    assert!(checked.symbol_types.values().any(|ty| *ty == ValueType::I64));
+    Ok(())
+}
+```
+
+`typing::check` performs resolution internally. On resolution failure it returns
+those diagnostics in `resolution.diagnostics` and skips typing. Otherwise,
+`diagnostics` contains local type errors with file-aware spans and related
+declarations where applicable. `symbol_types` and `expression_types` expose fully
+inferred ordinary value types; failed or ambiguous entries are omitted. Inspect
+`is_success()` before using these partial indexes. Named types and symbols use IDs
+from the enclosed resolution, not persistent identities.
+
+Core typing covers `Bool`, checked-`I64` literal ranges, UTF-8 strings, `Unit`,
+lists, nominal records/enums, `Option`/`Result`, named calls, local inference,
+immutable parameters/bindings, explicit local mutation, returns, loop control,
+and Boolean pact clauses. It checks nested match payloads for exhaustive coverage
+and unreachable arms, including correlations between payload positions. Infinite
+domains, records, lists, and `Unit` require a catch-all pattern. Inference uses the
+whole initializer, argument, return, or condition expression; an ambiguous local
+needs an annotation before subsequent statements. A loop conservatively needs a
+following return in a non-`Unit` function. Well-typed arithmetic and indexing that
+would trap at runtime remain valid types.
+
+Expanded types are limited to depth 64 and 1,024 nodes. Each match has a budget of
+20,000 analysis units (charging row scans and recursive steps), with recursion
+limited to 256. Exceeding these bounds emits `PTN_TYPE_LIMIT` or
+`PTN_TYPE_MATCH_LIMIT`; it never counts as successful analysis. User-defined
+generics and explicit generic calls emit `PTN_TYPE_UNSUPPORTED_GENERIC`; borrowed
+parameters/arguments emit `PTN_TYPE_UNSUPPORTED_HANDLE`. Prelude `List`, `Option`,
+and `Result` work without user-defined generic support. Type checking performs no
+filesystem or network access and does not execute code. It does not establish
+effect bounds, handle safety, contract proofs, or runtime behavior. CLI project
+loading and protocol diagnostic envelopes remain later work.
 
 Syntax spans use zero-based UTF-8 byte offsets and one-based line and Unicode
 scalar columns. LF, CRLF, and lone CR each count as one newline. Spans are local
@@ -98,10 +147,10 @@ diagnostic envelope used for later project operations. The lexer accepts at most
 expression depth are limited to 64.
 
 The [conformance corpus](../fixtures/conformance/README.md) records expected
-Pactern outcomes. Workspace tests check syntax outcomes and resolver-phase
+Pactern outcomes. Workspace tests check syntax, resolver-phase, and type-phase
 diagnostics by staging each fixture's selected files at their declared module
 paths; they also exercise the conventional Rust comparison program. They do
-not run Pactern programs or check type, runtime, or verification outcomes. With
+not run Pactern programs or check runtime or verification outcomes. With
 Go on `PATH`, run both baselines and record their build/execution costs with:
 
 ```sh

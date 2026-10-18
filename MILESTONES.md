@@ -57,6 +57,19 @@ verification is claimed.
 
 ### 6. Type-check the core language
 
+**Status:** Complete for core value typing. `pactern::typing::check` resolves a
+closed set of parsed files, then checks nominal records and enums, prelude
+containers, integer literal ranges, operators, calls, local inference, immutable
+parameters/bindings and explicit mutation, returns, loop control, and Boolean pact
+clauses. Nested pattern coverage checks both exhaustiveness and unreachable arms.
+Results expose file-aware diagnostics, symbol types, and expression types using
+resolution-local IDs. The 19 typing tests exercise staged conformance expectations,
+1,000 match combinations against an independent finite-domain oracle, and analysis
+limits; workspace tests, build, formatting, and Clippy pass. User-defined generics
+and borrowed handles receive explicit unsupported diagnostics. Effects, typed core
+IR, execution, verification, protocol envelopes, and CLI project loading remain
+later work. See the [development guide](docs/development.md) for the API and limits.
+
 **Languages/formats:** Rust; Pactern source. **Done when:** fixtures establish typing for `Bool`, checked `I64`, UTF-8 strings, lists, records, tagged unions, `Option`/`Result`, and exhaustive matching, plus local inference and explicit public signatures. The checker accepts immutable-by-default bindings and explicit local mutation, and rejects examples that violate these rules.
 
 ### 7. Add simple generic functions and types

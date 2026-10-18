@@ -1,6 +1,6 @@
 //! Shared entry points for the Pactern toolchain.
 //!
-//! Metadata, source syntax, and package name resolution APIs are available.
+//! Metadata, syntax, package name resolution, and core value typing APIs are available.
 //! Project commands remain
 //! unavailable until the semantic language path is implemented.
 //!
@@ -19,6 +19,7 @@ use serde::Serialize;
 
 pub mod resolution;
 pub mod syntax;
+pub mod typing;
 
 pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CLI_VERSION: &str = "0.1.0";
