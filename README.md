@@ -25,6 +25,79 @@ files have a hard 1,000-line limit. See the [candidate guide](docs/candidate.md)
 [implementation status](MILESTONES.md), and [alpha evaluation](docs/alpha-evaluation.md)
 for tested behavior and remaining release gates.
 
+## Quickstart
+
+You need Git, Rust installed through `rustup`, and Clang 21 plus `wasm-ld` 21
+to compile Pactern programs. The checkout's `rust-toolchain.toml` selects Rust
+1.98.1 automatically. On macOS with Homebrew, install the Wasm build tools with:
+
+```sh
+brew install llvm@21 lld@21
+```
+
+Pactern discovers those Homebrew tools automatically. On other systems, put
+`clang` and `wasm-ld` on `PATH`, or set `PACTERN_CLANG` and `PACTERN_WASM_LD`
+to their executable paths. No WASI SDK or target sysroot is needed. See the
+[backend guide](docs/backend.md#build-tools) for tool configuration.
+
+Build the compiler toolchain and install the CLI from a complete checkout:
+
+```sh
+git clone https://github.com/andrewarrow/pactern.git
+cd pactern
+cargo build --workspace --locked
+cargo install --path crates/pactern-cli --locked
+export PATH="$HOME/.cargo/bin:$PATH"
+pactern version --json
+```
+
+Create a separate project with a function that returns `42` and a pact that
+checks its result:
+
+```sh
+mkdir -p ../hello-pactern/src ../hello-pactern/contracts
+cd ../hello-pactern
+
+cat > src/main.ptn <<'EOF'
+module main;
+
+pub fn main() -> I64 {
+    return 42;
+}
+EOF
+
+cat > contracts/main.pact.ptn <<'EOF'
+module main;
+
+pact answer_is_42 for main {
+    ensures result == 42;
+}
+EOF
+```
+
+Check the project, compile your first WebAssembly binary, and run the program:
+
+```sh
+pactern check
+pactern build --entry main::main --output target/hello.wasm
+pactern run --entry main::main --json
+```
+
+`check`, `build`, and `run` select `src` and `contracts` automatically. The build
+writes `target/hello.wasm` and its generated C source, `target/hello.c`. The run
+report includes `"outcome":{"kind":"return","value":"42"}`; I64 values use
+JSON decimal strings. The pact is checked at runtime by default.
+
+The current binary target is WebAssembly. `pactern run` recompiles the selected
+source and executes it in the bundled sandboxed host; it does not load the
+previously built `.wasm` file. Artifacts currently embed their entry arguments.
+For a function with I64 parameters, pass arguments as strings, for example
+`--args '["3","2"]'` to both `build` and `run`.
+
+To prove the pact as well, install Z3 (the candidate suite uses 5.3.1), then run
+`pactern verify`. Z3 is not needed for the check/build/run steps above. See the
+[development guide](docs/development.md) for tests and full toolchain checks.
+
 ## Why write the rules twice?
 
 Contracts repeat some business knowledge. That is a cost, and the independent
@@ -204,23 +277,7 @@ The first target is sandboxed backend components: business rules, validation,
 data transformations, and bounded jobs called by an existing application. The
 quota demo is the first test of the complete design.
 
-You can build and inspect the current toolchain now. The repository pins Rust
-1.98.1 through `rust-toolchain.toml`.
-
-```sh
-cargo build --workspace --locked
-cargo test --workspace --locked
-cargo run -p pactern-cli -- version --json
-cargo run -p pactern-cli -- --help
-```
-
-To install the CLI from this checkout:
-
-```sh
-cargo install --path crates/pactern-cli --locked
-pactern version --json
-```
-
+Follow the [quickstart](#quickstart) to build the toolchain and run a first program.
 `pactern check` and `pactern fmt` select `src` and `contracts` by default.
 `verify` emits separate SMT claims; `build` produces a guarded Wasm artifact;
 `run` compiles and executes it under memory/fuel limits; `test` compares seeded
