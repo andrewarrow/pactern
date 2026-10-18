@@ -1,6 +1,6 @@
 # Pactern 0.1.0 conformance corpus
 
-This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. It is a fixture contract for future compiler and verifier implementations. No compiler is present in this repository, and none of the source files here have been executed.
+This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. The syntax-only library parses every source file here and checks the recorded syntax and parse outcomes. Runtime, pact execution, and verification expectations remain fixture contracts for future implementations; no Pactern program has been executed.
 
 `manifest.json` is the machine-readable index. Each case has a stable ID, a source path, an expected outcome, and, when relevant, an entry point, arguments, protected contracts, or pact phase statuses. `I64` arguments and results use canonical decimal JSON strings. Strings remain JSON strings, and lists and records use JSON arrays and objects. `Result` values use a `tag` plus their payload or error name. Static diagnostics use stable `PTN_*` identifiers; where the protocol registry does not yet define a language diagnostic, this corpus assigns a descriptive code for the specified condition.
 
@@ -22,7 +22,8 @@ files. A future compiler adapter must stage these files using their declared
 module paths, rather than compile the whole corpus as one package. In particular,
 quota variants replace `src/quota.ptn`; they are never loaded beside it. Static
 diagnostic cases expect the specified code and phase without pinning message
-wording. Spans will be added with the parser and diagnostic milestones.
+wording. Syntax errors include local UTF-8 byte and line/scalar-column spans;
+later semantic and protocol diagnostics are not implemented yet.
 
 `args` is an array of values, not source expressions: `List<I64>` uses arrays of
 decimal strings, string arguments contain their decoded text, and `Option`
@@ -33,8 +34,10 @@ outcomes contain a phase/code, and `verification` outcomes contain a distinct
 claim/status. Missing pact clause phases impose `true` as specified. A phase
 that cannot run is `not_reached`.
 
-Run `cargo test --workspace --locked` to validate the recorded corpus and the
-Rust seed comparison. See the [baseline guide](../../baselines/README.md) to run
-both comparison languages and record costs. The suite is a seed, not exhaustive
-coverage: module resolution, generic/effect/handle checks, host limits, solver
-timeouts, and other cases will grow with their implementation milestones.
+Run `cargo test --workspace --locked` to parse all corpus sources, validate the
+recorded syntax outcomes, and run the Rust seed comparison. These checks do not
+execute the Pactern programs or verify their runtime and proof expectations. See
+the [baseline guide](../../baselines/README.md) to run both comparison languages
+and record costs. The suite is a seed, not exhaustive coverage: module resolution,
+generic/effect/handle checks, host limits, solver timeouts, and other cases will
+grow with their implementation milestones.

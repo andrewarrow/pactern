@@ -16,10 +16,11 @@ You define the behavior and permissions. The agent proposes an implementation.
 The compiler, acceptance tools, and runtime are designed to check that the change
 respects the agreement—and return useful evidence when it doesn't.
 
-**Early development:** the specification, Rust library, installable CLI skeleton,
-conformance fixtures, and Go/Rust baseline harness are available. Pactern
-compilation, verification, execution, and semantic edits remain to be implemented.
-The examples and workflow below describe the design.
+**Early development:** the specification, Rust library with a syntax-only lexer
+and parser, installable CLI skeleton, conformance fixtures, and Go/Rust baseline
+harness are available. Name resolution, type checking, Pactern compilation,
+verification, execution, and semantic edits remain to be implemented. The
+examples and workflow below describe the design.
 
 ## Why write the rules twice?
 
@@ -133,10 +134,11 @@ one allocation decision, not fairness over time, job completion, or concurrent
 updates to queue state.
 
 The example uses the loop-free integer and record subset targeted by the
-[language specification](docs/spec/0.1.0/language.md). It is illustrative source;
-the compiler and verification pipeline are not implemented yet. The planned
-pipeline would check postconditions, arithmetic traps, and termination as
-separate claims, and report counterexamples when it refutes a supported claim.
+[language specification](docs/spec/0.1.0/language.md). The syntax library can
+parse this source, but the compiler and verification pipeline are not implemented
+yet. The planned pipeline would check postconditions, arithmetic traps, and
+termination as separate claims, and report counterexamples when it refutes a
+supported claim.
 
 ## Why Pactern's approach fits agent development
 
@@ -215,12 +217,14 @@ cargo install --path crates/pactern-cli --locked
 pactern version --json
 ```
 
-Help, version metadata, and structured tool diagnostics work today. Commands
-such as `check`, `verify`, `test`, `build`, and `apply` currently return explicit
-not-implemented errors. They do not process or modify a Pactern project.
+Help, version metadata, structured tool diagnostics, and the library syntax API
+work today. The library parser accepts implementation and contract files and
+returns syntax trees or bounded, located syntax diagnostics. CLI commands such
+as `check`, `verify`, `test`, `build`, and `apply` still return explicit
+not-implemented errors; they do not process or modify a Pactern project.
 
 If you want to help build the language, start with the next
-[implementation milestone](MILESTONES.md): source spans, lexer, and parser.
+[implementation milestone](MILESTONES.md): resolving modules and names.
 The [conformance corpus](fixtures/conformance/README.md) and
 [Go/Rust seed baselines](baselines/README.md) provide recorded expectations and
 reproducible measurements. Concrete edge cases, small failing programs, and challenges to

@@ -1,7 +1,7 @@
 //! Shared entry points for the Pactern toolchain.
 //!
-//! This milestone exposes metadata and explicitly unavailable command stubs.
-//! It does not parse source, consume change requests, or modify a workspace.
+//! Metadata and source syntax APIs are available. Project commands remain
+//! unavailable until the semantic language path is implemented.
 //!
 //! ```
 //! use pactern::{execute, Command, PROTOCOL_VERSION};
@@ -15,6 +15,8 @@ use std::fmt;
 use std::path::PathBuf;
 
 use serde::Serialize;
+
+pub mod syntax;
 
 pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CLI_VERSION: &str = "0.1.0";

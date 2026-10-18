@@ -45,6 +45,8 @@ verification is claimed.
 
 ### 4. Implement source spans, lexer, and parser
 
+**Status:** Complete for syntax. The `pactern` library exposes a source file, lexer, and parser for implementation and contract files. Valid corpus inputs produce syntax trees with UTF-8 byte offsets and line/scalar-column spans; malformed fixtures and deterministic mutation, random-input, and truncation smoke cases return first-error located diagnostics without panicking. The lexer caps source files at 1 MiB and emitted tokens at 100,000 including EOF; parser nesting and expression depth are capped at 64. These are syntax-only local diagnostics, not protocol envelopes. Name resolution, typing, execution, and verification remain future work.
+
 **Languages/formats:** Rust; Pactern source and EBNF grammar. **Done when:** valid fixture programs produce syntax trees with byte and line/column spans, while malformed and fuzz-generated input returns bounded, located diagnostics without crashing.
 
 ### 5. Resolve modules and names
