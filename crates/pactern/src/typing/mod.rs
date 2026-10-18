@@ -85,6 +85,8 @@ pub struct ExpressionType {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CheckResult {
+    /// Ordered, fully inferred function type arguments at each call path.
+    pub call_type_arguments: Vec<(Location, Vec<ValueType>)>,
     pub resolution: Resolution,
     pub diagnostics: Vec<TypeDiagnostic>,
     /// Parameters, locals, fields, pattern bindings, and postcondition results.
@@ -112,6 +114,7 @@ pub fn check(files: &[ParsedFile]) -> CheckResult {
             diagnostics: vec![],
             symbol_types: BTreeMap::new(),
             expression_types: vec![],
+            call_type_arguments: vec![],
         };
     }
     Checker::new(files, resolution).run()
@@ -160,6 +163,7 @@ struct Checker<'a> {
     expressions: Vec<(Location, Ty)>,
     matches: Vec<PendingMatch>,
     instantiations: Vec<(Location, Ty)>,
+    call_arguments: Vec<(Location, Vec<Ty>)>,
     current_function: Option<SymbolId>,
     calls: BTreeMap<SymbolId, BTreeSet<SymbolId>>,
 }
@@ -187,6 +191,7 @@ impl<'a> Checker<'a> {
                 diagnostics: vec![],
                 symbol_types: BTreeMap::new(),
                 expression_types: vec![],
+                call_type_arguments: vec![],
             },
             declarations,
             references,
@@ -200,6 +205,7 @@ impl<'a> Checker<'a> {
             expressions: vec![],
             matches: vec![],
             instantiations: vec![],
+            call_arguments: vec![],
             current_function: None,
             calls: BTreeMap::new(),
         }
@@ -313,6 +319,15 @@ impl<'a> Checker<'a> {
                     location: *location,
                     ty,
                 });
+            }
+        }
+        for (location, arguments) in &self.call_arguments {
+            if let Some(arguments) = arguments
+                .iter()
+                .map(|t| self.value_type(t))
+                .collect::<Option<Vec<_>>>()
+            {
+                self.out.call_type_arguments.push((*location, arguments));
             }
         }
         self.out
@@ -1188,13 +1203,24 @@ impl<'a> Checker<'a> {
                     );
                 }
                 parameters
-                    .into_iter()
+                    .iter()
+                    .copied()
                     .enumerate()
                     .map(|(i, p)| (p, types.get(i).cloned().unwrap_or(Ty::Error)))
                     .collect()
             } else {
                 self.fresh_substitutions(id)
             };
+            self.call_arguments.push((
+                Location {
+                    file,
+                    span: path.span,
+                },
+                parameters
+                    .iter()
+                    .map(|p| substitutions[p].clone())
+                    .collect(),
+            ));
             // Retain unused type arguments so ambiguity cannot disappear from a Unit result.
             for ty in substitutions.values() {
                 self.instantiations.push((

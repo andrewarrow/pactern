@@ -1,6 +1,6 @@
 //! Shared entry points for the Pactern toolchain.
 //!
-//! Metadata, syntax, package name resolution, and core value typing APIs are available.
+//! Metadata, syntax, package name resolution, core value typing, and typed IR APIs are available.
 //! Project commands remain
 //! unavailable until the semantic language path is implemented.
 //!
@@ -17,6 +17,7 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 
+pub mod core;
 pub mod resolution;
 pub mod syntax;
 pub mod typing;

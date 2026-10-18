@@ -182,9 +182,61 @@ Annotations resolve ambiguous locals before later statements, as in core typing.
 
 `ValueType::Applied` exposes a nominal declaration ID and ordered arguments;
 `ValueType::Parameter` identifies a rigid parameter in generic declaration bodies.
-All IDs belong to the enclosing resolution result. No monomorphized executable
-or specialization IR is produced. Recursive call cycles involving a generic
+All IDs belong to the enclosing resolution result. No monomorphized executable is produced. The core lowering phase retains
+call-site type arguments in generic IR. Recursive call cycles involving a generic
 function (including through nongeneric helpers and changing instantiations) emit
 `PTN_TYPE_GENERIC_RECURSION`. Recursive nominal data remains supported within
 bounded type and coverage analysis. Handles remain unavailable and cannot be
 passed or instantiated as ordinary generic values.
+
+
+### Typed core IR
+
+`pactern::core::lower(&[ParsedFile])` resolves, checks, and lowers a closed package
+without I/O. It returns a `Program` or `LowerError`: `Check` retains resolution and
+type diagnostics; `Invariant` identifies a missing compiler annotation or invalid
+lowering assumption with a file-aware location. Neither error returns partial IR.
+The same parser-produced-input contract and analysis limits as typing apply.
+
+The structured IR contains functions, records, enums, pacts, blocks, statements,
+expressions, and patterns. Every expression and pattern carries a `ValueType` and
+source origin. Declaration, block, statement, variant, arm, and clause origins
+retain file IDs and UTF-8 byte/line/scalar-column spans. Symbol IDs replace local
+names, function names, constructors, pact targets, and field names. The program
+owns its resolution and symbol-type tables; IDs are local to that program.
+Parameter, local, binding, result, and record-field types live in the symbol table.
+Function results and enum payload types are explicit in declarations.
+
+Invariants are established by construction: resolution and typing must succeed
+(including control flow, mutation rules, coverage and generic recursion checks),
+then lowering requires annotations and references for the nodes it emits. There
+are no error types or unresolved names in value operations. `Program` has private
+storage and shared getters, so callers cannot assemble or mutate a checked
+program from arbitrary nodes. This is not an interchange format or a validator
+for externally supplied IR. Rust `Debug` provides inspection; JSON serialization
+is not part of this milestone.
+
+Generic bodies retain rigid parameter IDs. Calls retain ordered, fully inferred
+type arguments, including explicit arguments unused in the signature. Constructor
+and record instantiations are represented by their expression's nominal/container
+type. Nested pattern payloads have substituted types. No monomorphization occurs.
+
+Consumers must evaluate list items, call/constructor arguments, record fields,
+and ordinary binary operands in source order. Record fields deliberately retain
+initializer order, not declaration order. `And`/`Or` are short-circuit operations;
+match arms remain ordered, and only the selected arm is evaluated. Arithmetic
+operators retain checked-I64 semantics and indexes retain bounds checks for the
+future interpreter/backend. Parentheses are erased while retaining the outer
+expression origin. A directly negated integer becomes a signed `i64`, including
+`i64::MIN`; other negation stays an operation. `Return(None)` and normal fallthrough
+of a `Unit` function return unit. Break and continue target the enclosing loop.
+
+Effect declarations preserve omission versus an explicit empty bound but are not
+validated effect authority. Pacts retain typed Boolean clauses and targets, not
+obligation IDs, runtime guards, or verification results. Handles, interpretation,
+code generation, and CLI project loading remain later work.
+
+The core tests inspect lowered structure, generic specialization, nested patterns,
+field order, UTF-8 origins, imports/contracts, control flow, and rejection paths.
+Accepted typing test programs and all successfully typed conformance cases also
+pass through lowering; runtime/trap/verification expectations are not executed.

@@ -89,6 +89,20 @@ boundaries. Monomorphization, typed core IR, handles, and execution remain later
 
 ### 8. Define a typed core IR
 
+**Status:** Complete for the supported value language. `pactern::core::lower`
+checks a closed package and produces immutable, structured generic IR with
+file-aware source origins, typed expressions and patterns, resolved symbol/field
+IDs, function signatures, data declarations, and typed pact clauses. Lowering
+requires complete annotations and references after successful resolution and
+typing; failures return diagnostics or located compiler-invariant errors, never
+partial IR. Calls retain ordered inferred type arguments, records retain source
+field evaluation order, and short-circuit/control-flow operations stay explicit.
+Seven core integration tests and the accepted typing/conformance cases cover the
+lowering path. Workspace tests, build, formatting, and Clippy pass. See the
+[development guide](docs/development.md#typed-core-ir) for invariants and consumer
+semantics. Interpretation, monomorphization, effect/handle safety, protocol
+serialization, and CLI project loading remain later work.
+
 **Languages/formats:** Rust; serialized debug IR as JSON where useful. **Done when:** parsed and resolved programs lower into a typed representation that records source origins and has validated invariants for every supported construct.
 
 ### 9. Build the pure reference interpreter

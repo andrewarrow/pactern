@@ -26,6 +26,8 @@ fn program(source: &str) -> CheckResult {
 fn accepts(source: &str) -> CheckResult {
     let result = program(source);
     assert!(result.is_success(), "{source}\n{:?}", result.diagnostics);
+    pactern::core::lower(&[file("src/main.ptn", &format!("module main; {source}"))])
+        .unwrap_or_else(|e| panic!("core lowering failed for {source}: {e:?}"));
     result
 }
 fn rejects(source: &str, code: &str) -> CheckResult {
@@ -521,6 +523,9 @@ fn conformance_corpus_checks_all_recorded_type_outcomes_and_well_typed_runtime_c
                 case["id"],
                 result.diagnostics
             );
+        }
+        if result.is_success() {
+            pactern::core::lower(&files).unwrap_or_else(|e| panic!("{}: {e:?}", case["id"]));
         }
         for d in &result.diagnostics {
             assert!(d.location.file.0 < files.len());

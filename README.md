@@ -17,7 +17,7 @@ The compiler, acceptance tools, and runtime are designed to check that the chang
 respects the agreement—and return useful evidence when it doesn't.
 
 **Early development:** the specification, Rust library with a lexer, parser, and
-module/name resolver and core type checker, installable CLI skeleton, conformance
+module/name resolver, core type checker and typed core IR, installable CLI skeleton, conformance
 fixtures, and Go/Rust baseline harness are available. Rank-1 generic functions
 and data types are supported. Pactern compilation, verification, execution, and semantic edits remain to be
 implemented. The examples and workflow below describe the design.
