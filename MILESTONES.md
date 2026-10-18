@@ -107,6 +107,17 @@ serialization, and CLI project loading remain later work.
 
 ### 9. Build the pure reference interpreter
 
+**Status:** Complete for pure value execution. `pactern::interpreter::execute`
+runs checked core IR with validated entry arguments, generic helpers, immutable
+values, local mutation, structured control flow, matching, and located arithmetic
+and bounds traps. All 48 pure-runtime conformance cases pass, covering the quota
+helper, both transformations, checked arithmetic, and evaluation order. Additional
+tests cover generic data, nested patterns, recursion, invalid calls, and fuel/value
+depth limits. Workspace tests, build, formatting, and Clippy pass. See the
+[development guide](docs/development.md#pure-reference-interpreter) for API and
+accounting limits. Pact guards, effects/handles, compiled execution, verification,
+and CLI project loading remain later work.
+
 **Languages/formats:** Rust; Pactern programs. **Done when:** the quota helper and transformation fixtures execute from typed IR with specified values, errors, checked-overflow traps, and evaluation order.
 
 ### 10. Add formatting and structured diagnostics

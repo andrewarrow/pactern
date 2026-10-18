@@ -226,7 +226,7 @@ and ordinary binary operands in source order. Record fields deliberately retain
 initializer order, not declaration order. `And`/`Or` are short-circuit operations;
 match arms remain ordered, and only the selected arm is evaluated. Arithmetic
 operators retain checked-I64 semantics and indexes retain bounds checks for the
-future interpreter/backend. Parentheses are erased while retaining the outer
+interpreter/backend. Parentheses are erased while retaining the outer
 expression origin. A directly negated integer becomes a signed `i64`, including
 `i64::MIN`; other negation stays an operation. `Return(None)` and normal fallthrough
 of a `Unit` function return unit. Break and continue target the enclosing loop.
@@ -239,4 +239,37 @@ code generation, and CLI project loading remain later work.
 The core tests inspect lowered structure, generic specialization, nested patterns,
 field order, UTF-8 origins, imports/contracts, control flow, and rejection paths.
 Accepted typing test programs and all successfully typed conformance cases also
-pass through lowering; runtime/trap/verification expectations are not executed.
+pass through lowering. The lowering tests do not execute runtime/trap/verification
+expectations; pure runtime execution is covered separately below.
+
+## Pure reference interpreter
+
+`pactern::interpreter::execute(&program, function_id, arguments, limits)`
+executes a nongeneric entry point from `core::lower`. IDs and aggregate member/
+variant IDs belong to that program. Arguments use the public `Value` enum;
+entry arity and nested value types are validated before evaluation. Generic
+helpers execute with erased types, relying on the checked IR. No monomorphization
+or filesystem access is required.
+
+The interpreter implements immutable value semantics, local mutation, loops,
+break/continue/return, records, lists, tagged unions, nested patterns, and calls.
+Evaluation is left-to-right, including record fields in written order; Boolean
+operators short-circuit. Checked integer overflow, zero divisors, and invalid
+list indexes produce distinct traps with the originating IR source location.
+Recoverable `Result::Err` values remain ordinary return values.
+
+Default limits allow 100,000 fuel units and 64 nested function calls. Statements,
+expressions, and calls consume fuel; arguments and expression results additionally
+charge one unit per value node plus UTF-8 string bytes. Value nesting and function
+call depth have a hard ceiling of 64. Fuel exhaustion, excessive value nesting,
+and excessive call depth produce `ExecutionLimit`. These are reference-interpreter
+accounting rules, not future Wasm instruction or memory budgets. This in-process
+library is not a security sandbox or an allocator-failure isolation boundary.
+
+Pact clauses are retained in the program but are **not evaluated**. Effect
+declarations do not grant capabilities; there are no host operations. Runtime
+contract guards, proof, generated code, and CLI project loading remain later
+milestones. The interpreter suite executes 48 pure-runtime conformance cases,
+including quota results and both transformations, without claiming their pact
+phase statuses. Separate tests cover generic helpers/data, nested patterns,
+loop control, value semantics, evaluation order, invalid invocations, and limits.

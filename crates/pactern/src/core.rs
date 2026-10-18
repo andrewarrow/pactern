@@ -740,7 +740,7 @@ impl<'a> Builder<'a> {
         })
     }
 }
-fn substitute(ty: &ValueType, args: &BTreeMap<SymbolId, ValueType>) -> ValueType {
+pub(crate) fn substitute(ty: &ValueType, args: &BTreeMap<SymbolId, ValueType>) -> ValueType {
     match ty {
         ValueType::Parameter(id) => args.get(id).cloned().unwrap_or_else(|| ty.clone()),
         ValueType::List(t) => ValueType::List(Box::new(substitute(t, args))),

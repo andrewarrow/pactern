@@ -1,12 +1,12 @@
 # Pactern 0.1.0 conformance corpus
 
-This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. The library parses fixture sources and checks recorded syntax outcomes. The module/name resolver checks module-resolution and contract-scope diagnostics for staged project files. The core type checker checks type-phase diagnostics and accepts the runtime/verification cases as well-typed. Runtime, pact execution, and verification expectations remain fixture contracts for future implementations; no Pactern program has been executed.
+This corpus records expected behavior from the Pactern language 0.1.0 specification and its normative examples. The library parses fixture sources and checks recorded syntax outcomes. The module/name resolver checks module-resolution and contract-scope diagnostics for staged project files. The core type checker checks type-phase diagnostics and accepts the runtime/verification cases as well-typed. The pure reference interpreter executes 48 return/arithmetic/bounds cases. Pact execution and verification expectations remain fixture contracts for future implementations.
 
 `manifest.json` is the machine-readable index. Each case has a stable ID, a source path, an expected outcome, and, when relevant, an entry point, arguments, protected contracts, or pact phase statuses. `I64` arguments and results use canonical decimal JSON strings. Strings remain JSON strings, and lists and records use JSON arrays and objects. `Result` values use a `tag` plus their payload or error name. Static diagnostics use stable `PTN_*` identifiers; where the protocol registry does not yet define a language diagnostic, this corpus assigns a descriptive code for the specified condition.
 
 The sources cover checked integer boundaries and evaluation order, lists, strings, mutation, matching, records, quota success and recoverable errors, preconditions and postconditions, contract evaluation traps, and the initial verifier's supported and unsupported boundary. The quota variants preserve the `quota` module name so the same protected pact can be applied to each candidate. They intentionally violate the protected postcondition: one returns unchecked arithmetic and one rejects every request.
 
-The current manifest contains 79 expected cases. The `pacts` values describe runtime guard outcomes only; verification results appear separately as `verification` outcomes. These expected outcomes are transcribed from the spec and are not execution results.
+The current manifest contains 79 expected cases. The `pacts` values describe runtime guard outcomes only; verification results appear separately as `verification` outcomes. These expected outcomes are transcribed from the spec; the interpreter checks the pure-runtime subset against them.
 
 | Case group | Governing rules |
 | --- | --- |
@@ -24,7 +24,7 @@ variants replace `src/quota.ptn`; they are never loaded beside it. Resolver
 conformance checks the expected resolution-phase codes. Resolver diagnostics
 carry file-aware source locations, while message wording is not pinned. Syntax
 errors include local UTF-8 byte and line/scalar-column spans. Type-phase diagnostic expectations are also exercised.
-Runtime and verification outcomes are not exercised yet.
+Pact guard and verification outcomes are not exercised yet.
 
 `args` is an array of values, not source expressions: `List<I64>` uses arrays of
 decimal strings, string arguments contain their decoded text, and `Option`
@@ -37,8 +37,8 @@ that cannot run is `not_reached`.
 
 Run `cargo test --workspace --locked` to parse the corpus sources, validate the
 recorded syntax outcomes, exercise resolver and core type-checker cases, and run the Rust
-seed comparison. These checks do not execute Pactern programs or verify their
-runtime and proof expectations. See the [baseline guide](../../baselines/README.md)
+seed comparison. The interpreter checks 48 pure-runtime outcomes; these checks do not validate pact
+phase statuses, runtime guards, or proofs. See the [baseline guide](../../baselines/README.md)
 to run both comparison languages and record costs. The suite is a seed, not
 exhaustive coverage: additional type, generic, effect/handle, host-limit, solver-timeout,
 and other cases will grow with their implementation milestones.
